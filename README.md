@@ -7,6 +7,11 @@ bewiesen, ohne Deploy.
 
 Neu hier? Lies zuerst [`START_HIER.md`](START_HIER.md).
 
+**Visitenkarte:** [civic-lagoon-6xr9.here.now](https://civic-lagoon-6xr9.here.now/) —
+eine statische Projekt-Übersicht mit Stack und den gemessenen Zahlen. Die App selbst
+läuft ohne Deploy, wie in der Aufgabenstellung vorgesehen; die Seite ersetzt die
+fehlende Live-URL, kein separat gehosteter Client.
+
 ## Was drin ist
 ```
 aufgaben/        das Projekt: 7 Stufen, jede mit Test und Nachweis
