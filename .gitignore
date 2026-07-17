@@ -1,0 +1,28 @@
+# Abhaengigkeiten und Build-Artefakte
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Umgebungsdateien (die Vorlage bleibt)
+.env
+.env.*
+!.env.example
+
+# Redis-Dumps
+*.rdb
+
+# Editor und Betriebssystem
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# Interne Materialien: niemals einchecken
+/loesungen/
+/loesungen-intern/
+/_intern/
+*_loesung*
+*_intern*

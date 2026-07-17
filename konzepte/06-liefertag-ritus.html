@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>06 · Der Liefertag-Ritus · Das Archiv</title>
+<link rel="stylesheet" href="_archiv.css" />
+</head>
+<body>
+<main class="seite">
+  <p class="marke">Das Archiv · Konzept 06</p>
+  <header class="kopf">
+    <h1>Der Liefertag-Ritus</h1>
+    <p class="dachzeile">
+      Wonach sieht eine fertige Arbeit aus, wenn sie nirgendwo veröffentlicht
+      wird? Und warum reicht der Beweis auf dem eigenen Rechner vollkommen aus?
+    </p>
+  </header>
+
+  <p>
+    Die ganze Woche über ist ein kleines, senkrechtes System gewachsen: eine
+    Vue-Galerie vorne, dahinter der Lesetisch aus Konzept 01 als Grenze zur
+    Außenwelt, auf dem Tisch ein Gedächtnis, das schon geholte Karten
+    wiedererkennt, und ganz hinten der Tresor mit der echten, fremden API. Der
+    Liefertag baut diesem Haus kein weiteres Stockwerk an. Er ist der Tag, an
+    dem jemand einmal durch das ganze Haus geht und prüft, ob es trägt.
+  </p>
+  <p>
+    Diese Prüfung braucht keine neue Adresse im Netz. Sie braucht deinen
+    eigenen Rechner, dein eigenes Terminal, und eine feste Reihenfolge von
+    Schritten, die jeden Teil des Systems einzeln unter Druck setzt.
+  </p>
+
+  <div class="merk">
+    <span class="titel">Kernsatz</span>
+    <p>
+      „Liefertag heißt fertigstellen und beweisen, nicht deployen." Kein
+      Hosting, kein Vercel, keine Pages. Der Beweis ist lokal: dein Rechner,
+      dein Terminal, deine eigene Preview.
+    </p>
+  </div>
+
+  <h2><span class="nr">§1</span>Fertigstellen ist nicht deployen</h2>
+  <p>
+    Ein Liefertag fühlt sich an wie ein Anlass, etwas zu veröffentlichen.
+    Genau das ist er hier nicht: Es gibt keine Adresse im Netz, die deinen
+    Namen trägt. Was zählt, ist, ob du in wenigen Minuten, auf deinem eigenen
+    Rechner, zeigen kannst, dass jede Zusage aus der Woche hält, dass gebaut
+    wird, dass die Grenze aus Konzept 01 ohne CORS steht, dass der Cache
+    Karten wiedererkennt, dass die Galerie ohne Maus bedienbar bleibt.
+  </p>
+  <p>
+    Jemand, der dein Repository klont, durchläuft dieselbe Reihenfolge von
+    Beweisen, die du gerade selbst durchgehst. Genau darin liegt der
+    Unterschied zwischen Liefertag und gewöhnlichem Werktag: nicht mehr Code,
+    sondern ein Rückblick auf das, was schon da ist.
+  </p>
+
+  <h2><span class="nr">§2</span>Der Ritus in sieben Schritten</h2>
+  <p>
+    Jeder Schritt prüft einen anderen Teil des Systems und liefert einen
+    eigenen, kleinen Beweis:
+  </p>
+  <ol class="schritte">
+    <li>
+      <code>bun run build</code> erzeugt das Produktions-Artefakt
+      <code>dist/</code>. Beweist: das Projekt baut ohne Fehler, aus dem
+      echten Quellcode, nicht nur im Kopf.
+    </li>
+    <li>
+      <code>bun run preview</code> (bzw. <code>vite preview</code>) serviert
+      genau dieses <code>dist/</code> lokal. Der Proxy auf <code>/api</code>
+      läuft auch hier, also spricht die Preview mit dem Bun-Server ohne CORS,
+      vorausgesetzt der Server läuft (<code>cd server</code>, dann
+      <code>bun start</code>). Beweist: das gebaute Artefakt funktioniert,
+      nicht nur der bequeme dev-Server.
+    </li>
+    <li>
+      Lighthouse läuft in den Browser-DevTools gegen diese lokale Preview.
+      Ziel: Leistung <span class="tab">&ge; 95</span>. Weil das Bundle klein
+      bleibt (etwa 60-70 kB JavaScript, gzip rund 25 kB), ist dieses Ziel ohne
+      Tricks erreichbar. Beweist: die Seite ist tatsächlich schnell, nicht nur
+      gefühlt schnell.
+    </li>
+    <li>
+      Die 390px-Kontrolle: DevTools-Geräteansicht auf 390px Breite. Galerie
+      und Detailkarte sitzen ohne horizontales Scrollen. Beweist: das Layout
+      hält auf einem schmalen Telefon, nicht nur auf dem breiten Monitor.
+    </li>
+    <li>
+      Der Tastatur-Durchgang: nur mit <span class="kbd">Tab</span> und
+      <span class="kbd">Enter</span> bzw. <span class="kbd">Leertaste</span>
+      durch die Galerie. Ein sichtbarer Fokusring, jede Kachel fokussierbar
+      und auslösbar. Beweist: die Galerie funktioniert auch ohne Maus.
+    </li>
+    <li>
+      <code>git log --oneline</code> zeigt die Historie. Sie ist der Faden
+      der Arbeit: ein Commit pro Stufe, nicht ein einziger Riesen-Commit am
+      Ende. Beweist: der Weg zur Lösung war nachvollziehbar, nicht nur das
+      Ergebnis.
+    </li>
+    <li>
+      Die README beschreibt, wie man beide Prozesse startet, den Hinweis auf
+      Redis unter Port 6380, und den Hinweis auf das Degrade-Verhalten, falls
+      der Cache einmal fehlt. Beweist: ein fremder Rechner kommt ohne
+      Rückfragen in denselben Zustand wie deiner.
+    </li>
+  </ol>
+
+  <div class="warnung">
+    <span class="titel">Falle</span>
+    <p>
+      Lighthouse misst nicht gegen den dev-Server. Dort ist der Code
+      unminifiziert und langsamer, das Ergebnis verzerrt in beide Richtungen.
+      Gemessen wird gegen die <code>preview</code>, das echte gebaute
+      Artefakt. Und: kein Deploy, der Ritus endet lokal, nicht auf einer
+      fremden Domain.
+    </p>
+  </div>
+
+  <div class="code">
+    <span class="titelzeile">Zwei Terminals, der Ritus in Befehlen</span>
+<pre><span class="c"># Terminal 1, der Server bleibt während der Prüfung an</span>
+<span class="f">cd</span> server
+<span class="f">bun</span> start
+
+<span class="c"># Terminal 2, bauen, dann gegen das echte Artefakt prüfen</span>
+<span class="f">bun</span> run build
+<span class="c"># dist/ entsteht, keine rote Zeile ist der erste Beweis</span>
+
+<span class="f">bun</span> run preview
+<span class="c"># serviert dist/ lokal, Proxy /api aktiv, kein CORS</span>
+<span class="c"># jetzt: Lighthouse in den DevTools gegen genau diese Adresse</span></pre>
+  </div>
+
+  <h2><span class="nr">§3</span>Die Qualitäts-Checkliste vor der Abgabe</h2>
+  <p>
+    Jeder Beweis aus dem Ritus lässt sich zeigen, nicht nur behaupten:
+  </p>
+  <table class="tabelle">
+    <thead>
+      <tr><th>Beweis</th><th>Wie du ihn zeigst</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Build ohne Fehler</td>
+        <td>Terminal-Ausgabe von <code>bun run build</code>, ohne rote Zeilen</td>
+      </tr>
+      <tr>
+        <td>Leistung <span class="tab">&ge; 95</span></td>
+        <td>Lighthouse-Screenshot gegen die Preview</td>
+      </tr>
+      <tr>
+        <td>Kein Layout-Sprung</td>
+        <td>feste <code>width</code>/<code>height</code> auf jedem Bild (kein CLS)</td>
+      </tr>
+      <tr>
+        <td>Bilder laden spät nach</td>
+        <td><code>loading="lazy"</code> auf den Galerie-Bildern</td>
+      </tr>
+      <tr>
+        <td>Erreichbar per Tastatur</td>
+        <td>sichtbarer Fokusring beim Tab-Durchgang</td>
+      </tr>
+      <tr>
+        <td>Bewegung wird respektiert</td>
+        <td><code>prefers-reduced-motion</code> greift, Animationen beruhigen sich</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    Ein paar kleine technische Details tragen diese Beweise mit, sichtbar in
+    jeder Code-Review:
+  </p>
+  <ul class="pillen">
+    <li class="pill"><code>loading="lazy"</code></li>
+    <li class="pill">feste <code>width</code>/<code>height</code> (kein CLS)</li>
+    <li class="pill"><code>alt</code> = Titel + Künstler</li>
+    <li class="pill">sichtbarer Fokusring</li>
+    <li class="pill"><code>prefers-reduced-motion</code></li>
+    <li class="pill"><code>tabular-nums</code> für ms</li>
+  </ul>
+
+  <p>
+    Nimm diese Frage mit aus der Woche, nicht nur aus diesem einen Projekt:
+  </p>
+  <div class="frage">
+    <span class="titel">Die Frage des Tages</span>
+    <p>„Würde ein Fremder dein Repo klonen, zweimal bun install tippen und in
+      zwei Minuten dasselbe sehen wie du?"</p>
+  </div>
+
+  <nav class="fuss">
+    <a href="05-triple-abortcontroller-race.html">&larr; Zurück</a>
+    <a href="index.html">Zur Übersicht &rarr;</a>
+  </nav>
+</main>
+</body>
+</html>

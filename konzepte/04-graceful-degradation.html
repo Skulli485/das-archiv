@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>04 · Graceful Degradation · Das Archiv</title>
+<link rel="stylesheet" href="_archiv.css" />
+</head>
+<body>
+<main class="seite">
+  <p class="marke">Das Archiv · Konzept 04</p>
+  <header class="kopf">
+    <h1>Graceful Degradation</h1>
+    <p class="dachzeile">
+      Was passiert mit deinem Cache, wenn Redis gar nicht da ist? Und warum merkt
+      der Leser vorne am Tisch davon nichts?
+    </p>
+  </header>
+
+  <p>
+    Aus Konzept 03 kennst du das Cache-Aside-Muster mit TTL: Der Lesetisch merkt
+    sich eine Katalogkarte für eine Weile, damit er nicht bei jeder Anfrage erneut
+    in den Tresor muss. Offen blieb dabei, wo genau diese Karte liegt, solange sie
+    gültig ist. Es gibt zwei mögliche Orte. Der erste ist ein gemeinsamer
+    Karteikasten im Keller des Hauses, auf den jeder Lesetisch im Gebäude
+    zugreifen kann. Der zweite ist eine gewöhnliche Schublade direkt an diesem
+    einen Tisch, die niemand sonst kennt.
+  </p>
+
+  <div class="fluss" role="img" aria-label="Zwei mögliche Speicherorte für dieselbe Katalogkarte: der Karteikasten im Keller oder die Schublade am Tisch, beide hinter derselben Schnittstelle">
+    <div class="knoten tresor-k"><span class="rolle">geteilt, extern</span><span class="name">Karteikasten im Keller</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten"><span class="rolle">gleiche Schnittstelle</span><span class="name">get / set / ttl</span></div>
+    <div class="pfeil" aria-hidden="true">←</div>
+    <div class="knoten tisch-k"><span class="rolle">privat, lokal</span><span class="name">Schublade am Tisch</span></div>
+  </div>
+
+  <p>
+    Redis trägt hier noch einmal die Farbe des Tresors, nicht weil es dieselbe
+    fremde API wäre, sondern weil es denselben Charakter hat: außerhalb dieses
+    einen Prozesses, geteilt mit anderen, nur über das Netz erreichbar. Die
+    Schublade bleibt bei der Farbe des Tisches: direkt hier, direkt jetzt, nur
+    diesem einen Prozess bekannt. Für den Leser vorne am Tisch macht das keinen
+    Unterschied. Er bekommt in beiden Fällen dieselbe Katalogkarte, in derselben
+    Form, ungefähr gleich schnell.
+  </p>
+
+  <h2><span class="nr">§1</span>Eine Schnittstelle, zwei Speicherorte</h2>
+  <p>
+    Der Rest des Servers kennt den Cache nicht als „Redis" oder „Map". Er kennt
+    ihn nur als eine winzige Schnittstelle mit drei Verben: eine Karte holen, eine
+    Karte ablegen, nachsehen, wie lange sie noch gültig ist.
+  </p>
+
+  <div class="karte">
+    <p class="leise">Die gesamte Schnittstelle, mit der der Rest des Servers arbeitet:</p>
+    <ul class="pillen">
+      <li class="pill">get(key)</li>
+      <li class="pill">set(key, value, ttl)</li>
+      <li class="pill">ttl(key)</li>
+    </ul>
+  </div>
+
+  <p>
+    Hinter dieser Schnittstelle sitzt entweder ein Redis-Client oder eine
+    gewöhnliche JavaScript-<code>Map</code>. Beide füllen dieselben drei Verben
+    mit Leben, beide liefern dieselbe Form zurück. Weil die Schnittstelle
+    identisch bleibt, ändert sich für den Rest des Codes: nichts. Kein Aufrufer
+    fragt jemals, ob Redis läuft. Er fragt nur nach dem Wert zu einem Schlüssel.
+  </p>
+
+  <div class="merk">
+    <span class="titel">Warum das für die Hausaufgabe zählt</span>
+    <p>
+      Redis ist für diese Aufgabe deshalb <strong>optional</strong>. Ohne Docker
+      läuft derselbe Server, mit derselben Katalogkarte, im selben Tempo, nur ein
+      Detail im Vertrag wechselt: <code>source</code> zeigt dann <code>"map"</code>
+      statt <code>"redis"</code>. Der Rest der Antwort,
+      <code>{ source, ms, ttl, data }</code>, bleibt, wie er war.
+    </p>
+  </div>
+
+  <h2><span class="nr">§2</span>Der Testtresor an Port 6380</h2>
+  <p>
+    Willst du den Redis-Modus wirklich sehen, brauchst du einen laufenden
+    Redis-Server. Nicht deinen echten, falls irgendwo einer für ein anderes
+    Projekt läuft, und nicht den Standardport <code>6379</code>. Für diese Aufgabe
+    reicht ein Wegwerf-Container auf Port <span class="tab">6380</span>, gestartet
+    mit einer einzigen Zeile.
+  </p>
+
+  <div class="code">
+    <span class="titelzeile">Terminal, der Testtresor, ein Kommando</span>
+<pre><span class="k">docker run</span> -d --rm -p <b>6380</b>:6379 --name archiv_redis <span class="s">redis:alpine</span></pre>
+  </div>
+
+  <p>
+    <code>-d</code> schickt den Container in den Hintergrund, <code>--rm</code>
+    räumt ihn beim Stoppen restlos weg, <code>-p 6380:6379</code> bildet deinen
+    lokalen Port 6380 auf den internen Redis-Port 6379 im Container ab. Dieser
+    Redis kennt keine wichtigen Daten. Ihn zu verlieren, neu zu starten oder
+    einfach zu vergessen, kostet nichts.
+  </p>
+
+  <div class="tresor">
+    <span class="titel">Aus dem Tresor</span>
+    <p>
+      6380, nie 6379, absichtlich. So kollidiert dein Testcontainer nie mit
+      einem echten Redis, der auf demselben Rechner vielleicht schon für ein
+      anderes Projekt läuft. Taucht dieser Container nicht in
+      <code>docker ps</code> auf, bist du automatisch im Map-Modus, noch bevor
+      der Server überhaupt ein Zeitlimit braucht.
+    </p>
+  </div>
+
+  <h2><span class="nr">§3</span>Wenn der Tresor nicht antwortet: das Zeitlimit</h2>
+  <p>
+    Jetzt der Teil, an dem die meisten ersten Versuche stolpern. Was passiert,
+    wenn dein Server versucht, sich mit Redis zu verbinden, aber Port 6380 gerade
+    niemand offen hält, weil der Container nicht läuft oder noch nicht bereit ist?
+  </p>
+
+  <div class="warnung">
+    <span class="titel">Die Falle: connect() hängt</span>
+    <p>
+      Der naheliegende Code sieht harmlos aus: <code>await redis.connect()</code>,
+      dann weiter zum nächsten Schritt. Ist der Port aber zu, bricht Buns eigener
+      Redis-Client diesen Aufruf nicht sofort mit einem Fehler ab. Er
+      <strong>hängt</strong>, reglos, ohne Fehler und ohne Antwort. In einem
+      Testlauf blockierte ein ungesicherter <code>connect()</code> rund zwei
+      Minuten, bevor überhaupt etwas zurückkam. In dieser Zeit steht der gesamte
+      Server still, nicht nur die Cache-Anfragen.
+    </p>
+  </div>
+
+  <p>
+    Die Lösung ist kein Sonderfall für Redis, sondern ein allgemeines Muster:
+    Jeder Redis-Aufruf bekommt einen Konkurrenten, einen Timer. Wer zuerst
+    antwortet, gewinnt. Antwortet Redis nicht rechtzeitig, gewinnt der Timer, 
+    und du weichst aus, statt zu warten.
+  </p>
+
+  <div class="code">
+    <span class="titelzeile">mitZeitlimit, der Wettlauf gegen das Hängen</span>
+<pre><span class="c">// Zwei Versprechen treten gegeneinander an, nur das schnellere zählt.</span>
+<span class="k">function</span> <span class="f">mitZeitlimit</span>(promise, ms, tag) {
+  <span class="k">const</span> zeitlimit = <span class="k">new</span> Promise((_, ablehnen) =>
+    setTimeout(() => ablehnen(<span class="k">new</span> Error(<span class="s">`Zeitlimit: ${tag}`</span>)), ms)
+  )
+  <span class="k">return</span> Promise.race([promise, zeitlimit])
+}
+
+<span class="c">// Beim Boot: entweder antwortet Redis rechtzeitig, oder wir weichen aus.</span>
+<span class="k">try</span> {
+  <span class="k">await</span> <span class="f">mitZeitlimit</span>(redis.connect(), <span class="s">1500</span>, <span class="s">'connect'</span>)
+  <span class="c">// ab hier: Redis-Modus</span>
+} <span class="k">catch</span> (fehler) {
+  console.log(<span class="s">'[cache] Redis nicht erreichbar (...) -> In-Memory Map'</span>)
+  <span class="c">// ab hier: Map-Modus</span>
+}</pre>
+  </div>
+
+  <p>
+    Verliert Redis das Rennen, ganz gleich ob durch Zeitlimit oder durch einen
+    echten Fehler, greift genau eine Reaktion: zurück auf die Schublade, so
+    simpel wie hier skizziert.
+  </p>
+
+  <div class="code">
+    <span class="titelzeile">Skizze, die Schublade, wenn kein Keller da ist</span>
+<pre><span class="c">// Kein Redis nötig: eine gewöhnliche Map hält Wert und Ablaufzeit.</span>
+<span class="k">const</span> speicher = <span class="k">new</span> Map()
+speicher.set(schluessel, { wert, ablaeuftAm: Date.now() + ttlSekunden * <span class="s">1000</span> })</pre>
+  </div>
+
+  <p>
+    Genau eine Protokollzeile, nicht mehr. Kein Stacktrace, keine Warnung bei
+    jeder einzelnen Anfrage danach. Der Server trifft die Entscheidung einmal
+    beim Boot und hält sich daran. Die vollständige <code>initCache()</code> mit
+    beiden Backends baust du in Aufgabe 04.
+  </p>
+
+  <h2><span class="nr">§4</span>Zwei Modi, ein Verhalten</h2>
+  <p>
+    Am Ende gibt es zwei fertige Zustände, in die dein Server booten kann. Beide
+    erfüllen dieselbe Schnittstelle, beide liefern die Katalogkarte im selben
+    <code>{ source, ms, ttl, data }</code>-Vertrag aus Konzept 01. Der Unterschied
+    liegt allein darin, was hinter den drei Verben steckt.
+  </p>
+
+  <table class="tabelle">
+    <thead>
+      <tr><th>Eigenschaft</th><th>Redis-Modus</th><th>Map-Modus</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Übersteht einen Neustart</td>
+        <td>Ja, der Karteikasten steht im Keller, unabhängig vom Server-Prozess.</td>
+        <td>Nein, die Schublade gehört zum Prozess und leert sich mit ihm.</td>
+      </tr>
+      <tr>
+        <td>Geteilt über mehrere Prozesse</td>
+        <td>Ja, jeder Lesetisch im Haus greift auf denselben Kasten zu.</td>
+        <td>Nein, nur dieser eine Tisch kennt seine eigene Schublade.</td>
+      </tr>
+      <tr>
+        <td>Voraussetzung</td>
+        <td>Docker, ein laufender Container auf Port 6380.</td>
+        <td>Keine, läuft mit Buns eigener Standardbibliothek.</td>
+      </tr>
+      <tr>
+        <td>Quelle im Vertrag</td>
+        <td><code>source: "redis"</code></td>
+        <td><code>source: "map"</code></td>
+      </tr>
+      <tr>
+        <td>Verhalten für den Leser</td>
+        <td>Katalogkarte, wie gewohnt.</td>
+        <td>Katalogkarte, wie gewohnt.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="fluss" role="img" aria-label="Beim Start versucht der Server Redis mit Zeitlimit zu erreichen, bei Erfolg läuft er im Redis-Modus">
+    <div class="knoten"><span class="rolle">Boot, mit Zeitlimit</span><span class="name">Redis versuchen</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten tresor-k"><span class="rolle">erreichbar</span><span class="name">Redis-Modus</span></div>
+  </div>
+  <div class="fluss" role="img" aria-label="Antwortet Redis nicht rechtzeitig oder gar nicht, weicht der Server auf die In-Memory Map aus">
+    <div class="knoten"><span class="rolle">Boot, mit Zeitlimit</span><span class="name">Redis versuchen</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten tisch-k"><span class="rolle">Zeitlimit oder Fehler</span><span class="name">Map-Modus</span></div>
+  </div>
+
+  <div class="tisch">
+    <span class="titel">Vom Tisch aus gesehen</span>
+    <p>
+      Graceful Degradation heißt nicht, dass nichts ausfallen darf. Es heißt,
+      dass das System bei einem fehlenden Teil <strong>leiser</strong> wird,
+      nicht kaputt. Fehlt der Karteikasten im Keller, springt die Schublade ein,
+      und der Leser verliert keine Karte. Er verliert höchstens die Gewissheit,
+      dass sie einen Neustart überlebt hätte, und selbst das sieht er nur, wenn
+      er das kleine Badge neben der Karte liest.
+    </p>
+  </div>
+
+  <div class="frage">
+    <span class="titel">Die Frage des Tages</span>
+    <p>„Startet dein Server gerade im Redis-Modus oder im Map-Modus, und woran erkennst du das, ohne eine einzige Zeile Code zu lesen?"</p>
+  </div>
+
+  <div class="merk">
+    <span class="titel">Mitnehmen</span>
+    <p>
+      Eine Schnittstelle trennt, was der Rest des Codes wissen muss, von dem, was
+      dahinter passiert. Redis oder Map ist eine Entscheidung, die einmal beim
+      Boot fällt, mit einem Zeitlimit gegen das Hängen abgesichert, und danach
+      nur noch in einer einzigen Protokollzeile laut wird. Der Leser am Tisch
+      bekommt in beiden Fällen dieselbe Katalogkarte.
+    </p>
+  </div>
+
+  <nav class="fuss">
+    <a href="03-cache-aside-ttl.html">&larr; Zurück</a>
+    <a href="05-triple-abortcontroller-race.html">Weiter: Das Triple &amp; die Wächter &rarr;</a>
+  </nav>
+</main>
+</body>
+</html>

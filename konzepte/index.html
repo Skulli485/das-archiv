@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Das Archiv · Konzepte</title>
+<link rel="stylesheet" href="_archiv.css" />
+<style>
+  .kachel {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: var(--papier-karte);
+    border: 1px solid var(--linie);
+    border-radius: 0.9rem;
+    padding: 1.3rem 1.4rem;
+    box-shadow: 0 1px 0 #fff inset, 0 14px 34px -28px rgba(40, 26, 10, 0.5);
+    transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .kachel:hover {
+    transform: translateY(-2px);
+    border-color: var(--messing-linie);
+    box-shadow: 0 1px 0 #fff inset, 0 18px 38px -24px rgba(40, 26, 10, 0.6);
+  }
+  .kachel:focus-visible { outline: 2px solid var(--messing); outline-offset: 3px; }
+  .kachel .nr {
+    font: 600 0.78rem/1 var(--mono);
+    color: var(--messing);
+    letter-spacing: 0.08em;
+  }
+  .kachel h2 { font-size: 1.2rem; margin: 0.5rem 0 0.3rem; }
+  .kachel p { font-size: 0.95rem; color: var(--tinte-weich); margin: 0; }
+  .gitter {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.9rem;
+    margin: 2rem 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .kachel { transition: none; }
+    .kachel:hover { transform: none; }
+  }
+</style>
+</head>
+<body>
+<main class="seite">
+  <p class="marke">Das Archiv · Woche 2 · Liefertag</p>
+  <header class="kopf">
+    <h1>Konzepte</h1>
+    <p class="dachzeile">
+      Sechs kurze Erklärer zur Sammlungs-Ansicht mit echter Server-Grenze und Cache.
+      Lies sie in Reihe, dann bauen die sieben Aufgaben genau darauf auf. Die Erklärer
+      zeigen die Muster, den Code schreibst du selbst.
+    </p>
+  </header>
+
+  <nav class="gitter">
+    <a class="kachel" href="01-die-server-grenze.html">
+      <span class="nr">01</span>
+      <h2>Die Server-Grenze</h2>
+      <p>Warum ein eigener Server, und warum damit kein CORS-Schmerz.</p>
+    </a>
+    <a class="kachel" href="02-transport-zu-view-model.html">
+      <span class="nr">02</span>
+      <h2>Transport zu View-Model</h2>
+      <p>Aus 50 rohen Feldern wird eine kleine Katalogkarte.</p>
+    </a>
+    <a class="kachel" href="03-cache-aside-ttl.html">
+      <span class="nr">03</span>
+      <h2>Cache-aside und TTL</h2>
+      <p>Das Gedächtnis des Tisches: erst schauen, dann holen.</p>
+    </a>
+    <a class="kachel" href="04-graceful-degradation.html">
+      <span class="nr">04</span>
+      <h2>Graceful Degradation</h2>
+      <p>Redis oder Map, gleicher Vertrag, das connect-Zeitlimit.</p>
+    </a>
+    <a class="kachel" href="05-triple-abortcontroller-race.html">
+      <span class="nr">05</span>
+      <h2>Das Triple und die Wächter</h2>
+      <p>idle, laden, fertig, fehler. AbortController und Renn-Wächter.</p>
+    </a>
+    <a class="kachel" href="06-liefertag-ritus.html">
+      <span class="nr">06</span>
+      <h2>Der Liefertag-Ritus</h2>
+      <p>Bauen, Preview, Lighthouse, 390px, Tastatur, git log.</p>
+    </a>
+  </nav>
+
+  <div class="merk">
+    <span class="titel">Dazu</span>
+    <p>
+      Der <a href="spickzettel.md">Spickzettel</a> fasst den Vertrag, das Cache-Muster,
+      das Composable und die Befehle auf einer Seite zusammen. Die Aufgaben liegen in
+      <code>../aufgaben/</code>, das startklare Chassis in <code>../starter/</code>.
+    </p>
+  </div>
+
+  <div class="frage">
+    <span class="titel">Die Frage des Tages</span>
+    <p>„Wer besitzt diese Grenze, und was überquert sie?"</p>
+  </div>
+</main>
+</body>
+</html>

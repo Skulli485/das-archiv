@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>01 · Die Server-Grenze · Das Archiv</title>
+<link rel="stylesheet" href="_archiv.css" />
+</head>
+<body>
+<main class="seite">
+  <p class="marke">Das Archiv · Konzept 01</p>
+  <header class="kopf">
+    <h1>Die Server-Grenze</h1>
+    <p class="dachzeile">
+      Warum steht ein eigener Server zwischen deinem Browser und einer fremden,
+      langsamen API? Und warum verschwindet damit der CORS-Schmerz von selbst?
+    </p>
+  </header>
+
+  <p>
+    Stell dir einen Leseraum vor. Tief im Haus liegt <strong>der Tresor</strong>:
+    eine riesige, langsame Sammlung, weit weg, die auf jede Anfrage ein rohes
+    Blatt mit fünfzig Feldern herausgibt. Kein Besucher darf selbst hinein.
+    Stattdessen sitzt am Eingang <strong>der Lesetisch</strong>. Du sagst ihm eine
+    Nummer, er geht in den Tresor, holt das Blatt, schreibt eine saubere
+    <strong>Katalogkarte</strong> ab und legt sie dir hin. Nur die Karte überquert
+    den Tisch, nie das rohe Blatt.
+  </p>
+
+  <div class="fluss" role="img" aria-label="Browser spricht mit dem Server, der Server spricht mit der fremden API">
+    <div class="knoten"><span class="rolle">Leser</span><span class="name">Browser (Vue)</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten tisch-k"><span class="rolle">Lesetisch</span><span class="name">Dein Bun-Server</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten tresor-k"><span class="rolle">Tresor</span><span class="name">Fremde API</span></div>
+  </div>
+
+  <p>
+    Dieser Lesetisch ist die <strong>Grenze</strong>. Er ist der einzige Ort, an
+    dem dein System die fremde Welt berührt. Alles, was langsam, unbeständig
+    oder unbequem geformt ist, bleibt hinter ihm. Nach vorne, zum Browser, gibt
+    er einen klaren, ruhigen Vertrag heraus.
+  </p>
+
+  <h2><span class="nr">§1</span>Warum überhaupt eine Grenze?</h2>
+  <p>
+    Der Browser könnte die fremde API auch direkt rufen. In der Theorie. In der
+    Praxis holst du dir damit drei Probleme gleichzeitig ins Haus:
+  </p>
+  <table class="tabelle">
+    <thead>
+      <tr><th>Problem</th><th>Ohne Grenze</th><th>Mit Grenze (Server)</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Form</td>
+        <td>Der Browser bekommt 50 rohe Felder und muss selbst aufräumen.</td>
+        <td>Der Server normalisiert einmal auf 7 saubere Felder.</td>
+      </tr>
+      <tr>
+        <td>Tempo</td>
+        <td>Jeder Nutzer wartet bei jedem Klick die volle Sekunde.</td>
+        <td>Der Server merkt sich die Antwort und liefert sie beim nächsten Mal sofort.</td>
+      </tr>
+      <tr>
+        <td>Bindung</td>
+        <td>Aendert die fremde API ihre Felder, bricht dein Frontend.</td>
+        <td>Nur eine Funktion am Server passt sich an, der Vertrag bleibt.</td>
+      </tr>
+      <tr>
+        <td>CORS</td>
+        <td>Der Browser blockiert die fremde Antwort oft komplett.</td>
+        <td>Kein Thema mehr, dazu gleich mehr.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="merk">
+    <span class="titel">Kernsatz</span>
+    <p>
+      Eine Grenze ist keine zusätzliche Schicht aus Bequemlichkeit. Sie ist der
+      Ort, an dem du entscheidest, <strong>was</strong> in dein System darf und in
+      <strong>welcher Form</strong>. Wer diese Entscheidung nicht trifft,
+      trifft sie trotzdem, nur verstreut über das ganze Frontend.
+    </p>
+  </div>
+
+  <h2><span class="nr">§2</span>Der CORS-Schmerz · und warum er hier verschwindet</h2>
+  <p>
+    CORS steht für <em>Cross-Origin Resource Sharing</em>. Es ist eine
+    <strong>Regel des Browsers</strong>, kein Gesetz des Internets. Der Browser
+    sagt: „Diese Seite kommt von <code>localhost:5173</code>. Sie will Daten von
+    <code>fremde-api.de</code> holen. Das ist eine andere Herkunft (Origin).
+    Erlaubt die fremde Seite das ausdrücklich per Antwort-Kopfzeile? Wenn nicht,
+    blockiere ich."
+  </p>
+  <p>
+    Der entscheidende Punkt: <strong>Nur der Browser prüft das.</strong> Ein
+    Server, der von sich aus eine andere Adresse ruft, kennt diese Regel nicht.
+    Für ihn ist ein <code>fetch</code> nach außen ein ganz normaler Aufruf.
+  </p>
+
+  <div class="fluss" role="img" aria-label="Der Browser ruft nur die eigene Herkunft, der Server ruft die fremde API ohne CORS">
+    <div class="knoten"><span class="rolle">gleiche Herkunft</span><span class="name">Browser → /api</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten tisch-k"><span class="rolle">kein CORS</span><span class="name">Server → fremde API</span></div>
+  </div>
+
+  <p>
+    Genau das nutzen wir aus. Der Browser spricht ausschließlich mit
+    <code>/api</code>, also mit der <strong>eigenen</strong> Herkunft. Im
+    Entwicklungsbetrieb leitet Vite jeden <code>/api</code>-Aufruf per Proxy an
+    den Bun-Server weiter. Aus Sicht des Browsers bleibt alles zu Hause. Der
+    Server wiederum ruft die fremde API, und dort gibt es kein CORS, weil kein
+    Browser beteiligt ist.
+  </p>
+
+  <div class="code">
+    <span class="titelzeile">vite.config.js, der Proxy, der alles zu Hause hält</span>
+<pre><span class="c">// Der Browser sieht nur /api. Vite reicht es an den Server auf :3000 weiter,</span>
+<span class="c">// im dev-Server UND in der preview. Darum nie CORS.</span>
+<span class="k">const</span> proxy = { <span class="s">'/api'</span>: <span class="s">'http://localhost:3000'</span> }
+
+<span class="k">export default</span> <span class="f">defineConfig</span>({
+  plugins: [<span class="f">vue</span>()],
+  server: { proxy },
+  preview: { proxy },
+})</pre>
+  </div>
+
+  <div class="tresor">
+    <span class="titel">Aus dem Tresor</span>
+    <p>
+      Weil derselbe Proxy in <code>server</code> (dev) und <code>preview</code>
+      steht, läuft dein gebautes <code>dist/</code> später genauso ohne CORS, 
+      und Lighthouse kann trotzdem gegen die lokale Preview messen.
+    </p>
+  </div>
+
+  <h2><span class="nr">§3</span>Was überquert die Grenze? Der Vertrag</h2>
+  <p>
+    Die Grenze ist nur so gut wie das, was sie herausgibt. Der Server antwortet
+    auf jede Objekt-Anfrage nicht mit dem rohen Blatt, sondern mit einem festen,
+    kleinen Vertrag. Diese Form ist das Versprechen an das Frontend:
+  </p>
+  <div class="code">
+    <span class="titelzeile">Die Antwort der Grenze, immer diese Form</span>
+<pre>{
+  source: <span class="s">"netz"</span> <span class="c">| "cache",</span>   <span class="c">// woher kam es?</span>
+  ms: <span class="s">631.5</span>,               <span class="c">// wie lange hat es gedauert?</span>
+  ttl: <span class="s">60</span>,                  <span class="c">// wie lange bleibt es gültig?</span>
+  data: { <span class="c">/* die Katalogkarte, 7 Felder */</span> }
+}</pre>
+  </div>
+  <p>
+    Das Frontend muss nie wissen, ob die Karte frisch aus dem Tresor kam oder
+    schon auf dem Tisch lag. Es bekommt immer dieselbe Form. Genau das macht die
+    Grenze <em>nachvollziehbar</em>: sie sagt mit <code>source</code> und <code>ms</code>,
+    woher und wie schnell, aber die Form bleibt gleich.
+  </p>
+
+  <div class="frage">
+    <span class="titel">Die Frage des Tages</span>
+    <p>„Wer besitzt diese Grenze, und was überquert sie?"</p>
+  </div>
+  <p>
+    Trage diese Frage durch die ganze Aufgabe. Jedes Mal, wenn du unsicher bist,
+    wo etwas hingehört: Frag, auf welcher Seite der Grenze es lebt. Die rohen
+    50 Felder? Hinter der Grenze. Die 7 Felder der Katalogkarte? Davor. Der
+    langsame Netz-Aufruf? Hinter der Grenze. Das <code>{source, ms, ttl}</code>?
+    Genau auf der Grenze, als ihr Laufzettel.
+  </p>
+
+  <div class="merk">
+    <span class="titel">Mitnehmen</span>
+    <p>
+      Der Server ist eine Grenze, die die langsame, fremde Welt besitzt, nach
+      vorne einen sauberen Vertrag herausgibt, und (Konzept 03) sich merkt, was
+      sie schon einmal geholt hat. CORS ist dabei kein Feind, den du besiegst,
+      sondern ein Problem, das durch die Grenze gar nicht erst entsteht.
+    </p>
+  </div>
+
+  <nav class="fuss">
+    <a href="index.html">&larr; Übersicht</a>
+    <a href="02-transport-zu-view-model.html">Weiter: Transport &rarr; View-Model &rarr;</a>
+  </nav>
+</main>
+</body>
+</html>

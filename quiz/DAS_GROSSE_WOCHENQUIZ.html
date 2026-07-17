@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Das grosse Wochenquiz — Archiv der Woche 2</title>
+<style>
+  :root{
+    --papier:#f5f0e7; --papier-karte:#fbf8f1; --papier-tief:#ece3d3;
+    --tinte:#22190f; --tinte-weich:#5c4a35; --tinte-leise:#8a765b;
+    --linie:#ddd0b8; --linie-weich:#e8ddc8;
+    --messing:#a9722a; --messing-bg:#f3e6cd; --messing-linie:#d9b877;
+    --patina:#2f6a4c; --patina-bg:#dcecdf; --patina-linie:#9bc7ac;
+    --rost:#9d3b2f; --rost-bg:#f3ddd6;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:"Geist",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:"Geist Mono",ui-monospace,"SF Mono","Cascadia Code",Consolas,monospace;
+    --schatten:0 1px 0 rgba(34,25,15,.04), 0 8px 24px -14px rgba(34,25,15,.28);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #fbf7ee, transparent 60%),
+      var(--papier);
+    color:var(--tinte);
+    font:400 17px/1.6 var(--sans);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    min-height:100vh;
+    padding:20px 16px 64px;
+  }
+  .huelle{max-width:660px;margin:0 auto}
+
+  /* ---- Kopf ---- */
+  .marke{font:600 .7rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--messing)}
+  .marke .punkt{color:var(--messing-linie)}
+  .titelzeile{font:600 clamp(1.9rem,6vw,2.9rem)/1.06 var(--serif);margin:.5rem 0 .2rem;letter-spacing:-.01em}
+  .unterzeile{color:var(--tinte-weich);max-width:52ch;font-size:1.02rem}
+
+  /* ---- Fortschritt / Statusleiste ---- */
+  .leiste{
+    position:sticky;top:8px;z-index:5;
+    display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between;
+    background:rgba(251,248,241,.86);backdrop-filter:blur(8px);
+    border:1px solid var(--linie);border-radius:14px;
+    padding:10px 14px;margin:0 0 18px;box-shadow:var(--schatten)
+  }
+  .leiste .runde{display:flex;align-items:baseline;gap:8px;min-width:0}
+  .leiste .runde .rz{font:600 .64rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tinte-leise)}
+  .leiste .runde .rn{font:600 1rem/1.1 var(--serif);color:var(--tinte);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .leiste .zähler{font:600 .78rem/1 var(--mono);color:var(--tinte-weich);font-variant-numeric:tabular-nums}
+  .leiste .punkte{
+    font:600 .78rem/1 var(--mono);color:var(--messing);
+    background:var(--messing-bg);border:1px solid var(--messing-linie);
+    border-radius:999px;padding:6px 11px;font-variant-numeric:tabular-nums;white-space:nowrap
+  }
+  .punkte-dots{display:flex;gap:6px;width:100%;margin-top:2px}
+  .pd{flex:1;height:6px;border-radius:3px;background:var(--papier-tief);border:1px solid var(--linie-weich)}
+  .pd.gut{background:var(--patina);border-color:var(--patina)}
+  .pd.schlecht{background:var(--rost);border-color:var(--rost)}
+  .pd.jetzt{box-shadow:0 0 0 2px var(--messing-linie)}
+
+  /* ---- Karten ---- */
+  .karte{
+    background:var(--papier-karte);border:1px solid var(--linie);border-radius:16px;
+    padding:22px 20px;box-shadow:var(--schatten);
+  }
+  @media (min-width:520px){.karte{padding:26px 26px}}
+  .karte.an{animation:auf .34s cubic-bezier(.2,.7,.2,1)}
+  @keyframes auf{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  .fragekopf{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .typ{font:600 .62rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+    color:var(--tinte-leise);background:var(--papier-tief);border:1px solid var(--linie-weich);
+    border-radius:999px;padding:5px 10px}
+  .rundechip{font:600 .62rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+    color:var(--messing);background:var(--messing-bg);border:1px solid var(--messing-linie);
+    border-radius:999px;padding:5px 10px}
+  .frage{font:600 clamp(1.15rem,3.6vw,1.42rem)/1.32 var(--serif);color:var(--tinte);margin:0 0 8px;letter-spacing:-.005em}
+
+  pre.code{
+    font:.82rem/1.55 var(--mono);background:#2a2116;color:#f3ead9;
+    border:1px solid #3d3020;border-radius:10px;padding:14px 15px;margin:14px 0 4px;
+    overflow-x:auto;white-space:pre;-webkit-overflow-scrolling:touch
+  }
+  pre.code .komm{color:#c8a86b}
+
+  /* ---- Laufzettel ---- */
+  .laufzettel{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    border-radius:12px;padding:12px 14px;margin:14px 0 4px;border:1px solid
+  }
+  .laufzettel.netz{background:var(--messing-bg);border-color:var(--messing-linie)}
+  .laufzettel.cache{background:var(--patina-bg);border-color:var(--patina-linie)}
+  .lz-label{font:600 .66rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}
+  .laufzettel.netz .lz-label{color:var(--messing)}
+  .laufzettel.cache .lz-label{color:var(--patina)}
+  .lz-feld{font:.8rem/1 var(--mono);color:var(--tinte-weich)}
+  .lz-feld b{color:var(--tinte);font-variant-numeric:tabular-nums}
+
+  /* ---- Optionen ---- */
+  .optionen{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+  .opt{
+    display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;
+    background:var(--papier);border:1px solid var(--linie);border-radius:12px;
+    padding:13px 15px;cursor:pointer;color:var(--tinte);font:inherit;font-size:1rem;line-height:1.4;
+    transition:border-color .16s, background .16s, transform .08s
+  }
+  .opt:hover:not(:disabled){border-color:var(--messing-linie);background:#fbf6ea}
+  .opt:active:not(:disabled){transform:translateY(1px)}
+  .opt:focus-visible{outline:2px solid var(--messing);outline-offset:2px}
+  .opt .marker{
+    flex:none;width:26px;height:26px;border-radius:8px;border:1px solid var(--linie);
+    display:grid;place-items:center;font:600 .8rem/1 var(--mono);color:var(--tinte-leise);
+    background:var(--papier-karte);margin-top:1px
+  }
+  .opt[disabled]{cursor:default}
+  .opt.gewählt{border-width:1px}
+  .opt.richtig{background:var(--patina-bg);border-color:var(--patina)}
+  .opt.richtig .marker{background:var(--patina);border-color:var(--patina);color:#fff}
+  .opt.falsch{background:var(--rost-bg);border-color:var(--rost)}
+  .opt.falsch .marker{background:var(--rost);border-color:var(--rost);color:#fff}
+  .opt.blass{opacity:.55}
+
+  .warum{
+    margin-top:14px;border-left:3px solid var(--messing);
+    background:#f7f0e1;border-radius:0 10px 10px 0;padding:13px 15px;
+    font-size:.98rem;line-height:1.55;color:var(--tinte-weich);
+    animation:auf .28s ease
+  }
+  .warum.gut{border-left-color:var(--patina);background:var(--patina-bg)}
+  .warum.schlecht{border-left-color:var(--rost);background:var(--rost-bg)}
+  .warum .w-titel{font:600 .68rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:6px}
+  .warum.gut .w-titel{color:var(--patina)}
+  .warum.schlecht .w-titel{color:var(--rost)}
+  .warum b{color:var(--tinte)}
+
+  /* ---- Knöpfe ---- */
+  .knopfreihe{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+  button.knopf{
+    font:600 .95rem/1 var(--sans);border-radius:11px;padding:13px 20px;cursor:pointer;
+    border:1px solid var(--tinte);background:var(--tinte);color:var(--papier);
+    transition:transform .08s, box-shadow .16s, background .16s
+  }
+  button.knopf:hover{box-shadow:var(--schatten)}
+  button.knopf:active{transform:translateY(1px)}
+  button.knopf:focus-visible{outline:2px solid var(--messing);outline-offset:2px}
+  button.knopf.leise{background:transparent;color:var(--tinte);border-color:var(--linie)}
+  button.knopf.leise:hover{border-color:var(--messing);color:var(--messing)}
+  button.knopf.messing{background:var(--messing);border-color:var(--messing);color:#fff}
+  button.knopf[hidden]{display:none}
+
+  /* ---- Zwischenrunde / Finale ---- */
+  .gross-zahl{font:600 clamp(2.6rem,10vw,4.2rem)/1 var(--serif);letter-spacing:-.02em}
+  .gross-zahl .von{color:var(--tinte-leise);font-size:.42em}
+  .rangtitel{font:600 clamp(1.6rem,5vw,2.3rem)/1.1 var(--serif);margin:.3rem 0 .2rem}
+  .rangzeile{color:var(--tinte-weich);max-width:54ch;font-size:1.05rem}
+  .balken{margin:20px 0 6px;display:flex;flex-direction:column;gap:12px}
+  .balkenzeile{display:flex;align-items:center;gap:12px}
+  .balkenzeile .name{flex:none;width:118px;font:600 .82rem/1.2 var(--serif);color:var(--tinte)}
+  .balkenzeile .spur{flex:1;height:10px;border-radius:5px;background:var(--papier-tief);border:1px solid var(--linie-weich);overflow:hidden}
+  .balkenzeile .fuell{height:100%;background:linear-gradient(90deg,var(--messing),var(--patina));border-radius:5px;transition:width .5s cubic-bezier(.2,.7,.2,1)}
+  .balkenzeile .wert{flex:none;width:44px;text-align:right;font:600 .82rem/1 var(--mono);color:var(--tinte-weich);font-variant-numeric:tabular-nums}
+  .merkzettel{margin-top:22px;border:1px dashed var(--messing-linie);background:var(--messing-bg);border-radius:12px;padding:16px 17px}
+  .merkzettel .m-titel{font:600 .68rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--messing);display:block;margin-bottom:8px}
+  .merkzettel p{margin:0;font-size:.96rem;line-height:1.55;color:var(--tinte-weich)}
+  .merkzettel code{font:.86em var(--mono);background:#fff;border:1px solid var(--messing-linie);border-radius:5px;padding:1px 6px;color:var(--tinte)}
+
+  .intro-liste{list-style:none;padding:0;margin:18px 0 0;display:flex;flex-direction:column;gap:12px}
+  .intro-liste li{display:flex;gap:12px;align-items:flex-start;font-size:1rem;color:var(--tinte-weich)}
+  .intro-liste .nr{flex:none;width:28px;height:28px;border-radius:8px;background:var(--papier-tief);border:1px solid var(--linie);display:grid;place-items:center;font:600 .8rem/1 var(--mono);color:var(--messing)}
+  .fuss{margin-top:24px;text-align:center;font:.72rem/1.5 var(--mono);color:var(--tinte-leise);letter-spacing:.04em}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+  <div class="huelle" id="app"></div>
+  <div class="fuss">Das Archiv · Woche 2 · Komponenten-Handwerk — offline lesbar, ohne Netz.</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var RUNDEN = [
+    { name:"Der Vertrag",     tag:"Dienstag",   sub:"Komponenten & Grenzen" },
+    { name:"Der Lebenszyklus", tag:"Mittwoch",   sub:"Aufsetzen & Aufräumen" },
+    { name:"Die Werkzeuge",   tag:"Donnerstag", sub:"Composables & Übergänge" },
+    { name:"Die Grenze",      tag:"Freitag",    sub:"Server, Cache, Laufzettel" }
+  ];
+
+  // Jede Frage: runde, typ, frage, [code], [laufzettel], optionen[{text,richtig,warum}]
+  var FRAGEN = [
+    // ============ RUNDE 1 — DER VERTRAG ============
+    { runde:0, typ:"Multiple Choice", frage:"Was ist eine Komponente im Kern?",
+      optionen:[
+        {text:"Eine Grenze mit einem Besitzer und einem Vertrag.", richtig:true,
+         warum:"Genau. Jede Komponente besitzt einen Ausschnitt des Zustands und legt über props und emits fest, was die Grenze überqueren darf."},
+        {text:"Eine Datei, die HTML, CSS und JavaScript zusammenlegt.", richtig:false,
+         warum:"Das ist die Verpackung (die .vue-Datei), nicht das Prinzip. Der Kern ist die Grenze mit Besitzer und Vertrag."},
+        {text:"Ein globaler Speicher, auf den alle zugreifen.", richtig:false,
+         warum:"Das Gegenteil: eine Komponente kapselt ihren Zustand. Geteilter globaler Zustand kommt später, nicht hier."},
+        {text:"Eine Funktion ganz ohne eigenen Zustand.", richtig:false,
+         warum:"Eine Komponente darf sehr wohl eigenen Zustand besitzen. Ohne Besitz gäbe es keine Grenze zu ziehen."}
+      ]},
+    { runde:0, typ:"Multiple Choice", frage:"props gehen die Grenze hinunter. Was geht hinauf?",
+      optionen:[
+        {text:"emits — Ereignisse, mit denen das Kind eine Absicht meldet.", richtig:true,
+         warum:"props runter, emits hoch. Das Kind bittet, das Elternteil entscheidet und ändert den Zustand. So bleibt der Datenfluss in eine Richtung lesbar."},
+        {text:"Das Kind schreibt direkt in die prop zurück.", richtig:false,
+         warum:"Das bricht den Vertrag. props sind nur lesbar; nach oben meldet man über emits."},
+        {text:"Nichts, der Fluss geht ausschliesslich nach unten.", richtig:false,
+         warum:"Dann könnte ein Kind nie etwas auslösen. Nach oben geht die Absicht als Ereignis (emit)."},
+        {text:"Ein Slot.", richtig:false,
+         warum:"Ein Slot reicht Markup nach unten, kein Ereignis nach oben. Der Rueckweg für Absichten ist emits."}
+      ]},
+    { runde:0, typ:"Wo ist der Fehler?", frage:"Das Kind bekommt ein Objekt als prop. Wo ist der Fehler?",
+      code:"const props = defineProps({ nutzer: Object })\n\nfunction umbenennen() {\n  props.nutzer.name = 'Neu'   // ???\n}",
+      optionen:[
+        {text:"Es verändert das Objekt des Elternteils still mit — die Mutation rutscht durch die Grenze.", richtig:true,
+         warum:"props sind nur oberflächlich schreibgeschützt. Ein verschachteltes Objekt zeigt auf dieselbe Referenz wie beim Elternteil; nutzer.name zu setzen mutiert dessen Zustand ohne emit. Nach oben meldet man die Absicht, statt durchzugreifen."},
+        {text:"Kein Fehler, Objekt-props darf man ändern.", richtig:false,
+         warum:"Der Schutz greift nur auf der obersten Ebene. Bei verschachtelten Objekten mutierst du die Referenz des Elternteils — der Vertrag ist gebrochen."},
+        {text:"defineProps muss ein ref zurückgeben.", richtig:false,
+         warum:"defineProps liefert bereits ein reaktives Objekt. Das Problem ist die stille Mutation, nicht die Deklaration."},
+        {text:"Die prop müsste String statt Object sein.", richtig:false,
+         warum:"Der Typ ist in Ordnung. Der Fehler ist das Durchgreifen auf das verschachtelte Objekt des Elternteils."}
+      ]},
+    { runde:0, typ:"Multiple Choice", frage:"defineModel() ist Zucker. Wofür genau?",
+      optionen:[
+        {text:"Für die prop modelValue plus das Ereignis update:modelValue.", richtig:true,
+         warum:"defineModel() faltet genau dieses Paar auf: die prop modelValue runter, das emit update:modelValue hoch. So wird v-model zu einem sauberen Zwei-Wege-Vertrag."},
+        {text:"Für einen globalen Zustand zwischen allen Komponenten.", richtig:false,
+         warum:"Nein, es bleibt lokal zwischen Elternteil und Kind. Es bündelt nur modelValue und update:modelValue."},
+        {text:"Für Zwei-Wege-Bindung ganz ohne props und emits.", richtig:false,
+         warum:"Die props und emits sind weiterhin da — defineModel erzeugt sie nur für dich. Der Vertrag bleibt derselbe."},
+        {text:"Für das Rendern von Slots.", richtig:false,
+         warum:"Slots sind ein anderes Werkzeug. defineModel steht für modelValue plus update:modelValue."}
+      ]},
+    { runde:0, typ:"Wahr oder falsch", frage:"Ein Slot lässt das Elternteil Markup in das Kind hineingeben — und ein scoped Slot kann dabei sogar Daten aus dem Kind zurückreichen.",
+      optionen:[
+        {text:"Wahr.", richtig:true,
+         warum:"Beides stimmt. Der normale Slot reicht Markup hinein; der scoped Slot reicht dem Elternteil beim Rendern Daten des Kindes heraus (z. B. status), damit das Elternteil entscheidet, wie es sie darstellt."},
+        {text:"Falsch — Slots gehen nur in eine Richtung.", richtig:false,
+         warum:"Der normale Slot ja, aber der scoped Slot reicht Daten des Kindes an das Elternteil zurück. Genau das macht ihn stark."}
+      ]},
+    { runde:0, typ:"Was passiert hier?", frage:"<KarteListe v-slot=\"{ status }\"> — woher kommt status?",
+      code:"<!-- im Kind, KarteListe.vue -->\n<slot :status=\"ladeZustand\" />",
+      optionen:[
+        {text:"Das Kind reicht es über <slot :status=\"...\"> heraus; das Elternteil liest es im v-slot.", richtig:true,
+         warum:"Der scoped Slot ist der Rueckkanal beim Rendern: das Kind bietet status an, das Elternteil greift es in v-slot=\"{ status }\" ab und rendert damit. Der Besitz bleibt beim Kind, die Darstellung beim Elternteil."},
+        {text:"status ist eine globale Variable.", richtig:false,
+         warum:"Nein, es stammt aus dem Kind, das es am <slot> anbietet. Ohne dieses Angebot wäre status im Elternteil leer."},
+        {text:"Das Elternteil muss status als prop hineingeben.", richtig:false,
+         warum:"Umgekehrt: beim scoped Slot reicht das Kind die Daten heraus, das Elternteil empfängt sie im Slot-Objekt."},
+        {text:"status kommt aus dem Router.", richtig:false,
+         warum:"Router ist ein Thema der nächsten Woche. Hier stammt status aus dem <slot :status> des Kindes."}
+      ]},
+
+    // ============ RUNDE 2 — DER LEBENSZYKLUS ============
+    { runde:1, typ:"Multiple Choice", frage:"Du willst nach dem Rendern ein Interval starten, das auf das DOM zugreift. Welcher Haken?",
+      optionen:[
+        {text:"onMounted — läuft, sobald die Komponente im DOM steht.", richtig:true,
+         warum:"onMounted feuert nach dem ersten Rendern, wenn das DOM existiert. Davor gäbe es nichts, worauf ein Timer oder eine Messung zugreifen könnte."},
+        {text:"onUnmounted.", richtig:false,
+         warum:"Das ist der Gegenspieler: er raeumt beim Verlassen auf. Gestartet wird in onMounted."},
+        {text:"Direkt im <script setup>, ganz oben.", richtig:false,
+         warum:"Das läuft schon vor dem Einhängen ins DOM. Für DOM-Zugriff wartest du auf onMounted."},
+        {text:"onUpdated.", richtig:false,
+         warum:"Der feuert bei jeder Aktualisierung, nicht einmalig zum Start. Zum Aufsetzen nimmst du onMounted."}
+      ]},
+    { runde:1, typ:"Wo ist der Fehler?", frage:"Diese Komponente wird oft ein- und ausgeblendet. Wo ist der Fehler?",
+      code:"onMounted(() => {\n  setInterval(() => tick(), 1000)\n})\n// kein onUnmounted",
+      optionen:[
+        {text:"Das Interval wird nie gestoppt — bei jedem Einhängen läuft ein weiterer Timer weiter.", richtig:true,
+         warum:"Ohne clearInterval in onUnmounted überlebt der Timer die Komponente. Nach mehrmaligem Ein- und Ausblenden ticken viele Timer parallel — ein klassisches Leck. Wer aufsetzt, raeumt auch ab."},
+        {text:"setInterval gehört nicht in onMounted.", richtig:false,
+         warum:"Doch, onMounted ist der richtige Ort zum Starten. Es fehlt nur das Aufräumen in onUnmounted."},
+        {text:"tick() müsste await sein.", richtig:false,
+         warum:"Das ändert am Leck nichts. Das Problem ist der Timer, der nie gestoppt wird."},
+        {text:"Kein Fehler, Vue raeumt Timer selbst auf.", richtig:false,
+         warum:"Vue raeumt eigene Reaktivitaet auf, aber nicht dein setInterval. Das ist deine Aufgabe in onUnmounted."}
+      ]},
+    { runde:1, typ:"Multiple Choice", frage:"Welche vier Zustände beschreiben eine Anfrage sauber?",
+      optionen:[
+        {text:"idle · laden · fertig · fehler.", richtig:true,
+         warum:"Vier klar getrennte Zustände: idle vor dem Start, laden während, fertig mit Daten, fehler mit Grund. So rendert die Oberflaeche nie einen Zwischenzustand, den es nicht gibt."},
+        {text:"laden · fertig.", richtig:false,
+         warum:"Zu wenig. Ohne idle und fehler bleiben der Start und der Fehlerfall unbeschrieben — und genau da bricht die Oberflaeche."},
+        {text:"wahr · falsch.", richtig:false,
+         warum:"Das ist ein boolescher Schalter, kein Zustandsmodell. Eine Anfrage hat mehr als zwei Lagen."},
+        {text:"offen · geschlossen.", richtig:false,
+         warum:"Das beschreibt keine Anfrage. Die vier Lagen sind idle, laden, fertig, fehler."}
+      ]},
+    { runde:1, typ:"Was passiert hier?", frage:"Ein Watcher startet bei jeder Sucheingabe ein Fetch und registriert onWatcherCleanup(() => { clearTimeout(t); controller.abort() }). Was passiert bei schnellem Tippen?",
+      optionen:[
+        {text:"Vor jedem neuen Lauf wird das noch offene Fetch abgebrochen — nur die letzte Eingabe zählt.", richtig:true,
+         warum:"onWatcherCleanup läuft, bevor der Watcher erneut feuert. Der alte Timer wird gelöscht und die noch offene Anfrage über den AbortController abgebrochen. So kann keine veraltete Antwort die frische überschreiben."},
+        {text:"Alle Anfragen laufen parallel zu Ende und die letzte gewinnt zufällig.", richtig:false,
+         warum:"Genau das verhindert die Bereinigung. Der Abbruch beendet die alte Anfrage aktiv, statt auf Zufall zu hoffen."},
+        {text:"Der Watcher hört ganz auf zu feuern.", richtig:false,
+         warum:"Er feuert weiter bei jeder Eingabe. Die Bereinigung raeumt nur den vorigen Lauf ab, bevor der nächste startet."},
+        {text:"Nichts, onWatcherCleanup ist nur für Intervalle.", richtig:false,
+         warum:"Es raeumt jeden Nebeneffekt eines Watcher-Laufs ab — Timer wie auch offene Fetches über den Abbruch."}
+      ]},
+    { runde:1, typ:"Wahr oder falsch", frage:"onUnmounted braucht man nur, um Intervalle zu stoppen.",
+      optionen:[
+        {text:"Falsch — jeder Nebeneffekt, den du selbst aufgesetzt hast, muss dort zurückgenommen werden.", richtig:true,
+         warum:"clearInterval ist nur ein Fall. Genauso gehören removeEventListener, das Abbrechen offener Anfragen und das Abmelden von Abos hinein. Regel: wer etwas aufsetzt, raeumt es auch ab."},
+        {text:"Wahr, nur Intervalle sind gemeint.", richtig:false,
+         warum:"Zu eng. Event-Listener, offene Fetches und Abos hinterlassen genauso Lecks, wenn sie beim Verlassen bleiben."}
+      ]},
+    { runde:1, typ:"Multiple Choice", frage:"Warum in onUnmounted das removeEventListener nicht vergessen?",
+      optionen:[
+        {text:"Sonst läuft der Handler weiter und hält die zerstörte Komponente samt Zustand im Speicher.", richtig:true,
+         warum:"Ein Listener auf window kennt deine Komponente nicht als tot. Er feuert weiter, hält per Closure ihren Zustand fest und verhindert das Aufräumen — ein Leck, das mit jedem Mounten wächst."},
+        {text:"Weil sonst der Browser sofort abstürzt.", richtig:false,
+         warum:"So dramatisch ist es selten. Es entsteht ein schleichendes Speicherleck, kein sofortiger Absturz."},
+        {text:"Aus reiner Konvention, technisch egal.", richtig:false,
+         warum:"Es ist technisch noetig: der globale Listener überlebt die Komponente und leckt ihren Zustand."},
+        {text:"Damit Vue den Listener neu registrieren kann.", richtig:false,
+         warum:"Vue registriert deinen manuellen Listener nicht neu. Du meldest ihn an und wieder ab."}
+      ]},
+
+    // ============ RUNDE 3 — DIE WERKZEUGE ============
+    { runde:2, typ:"Multiple Choice", frage:"Was ist ein Composable im Kern?",
+      optionen:[
+        {text:"Eine Funktion, die Reaktivitaet besitzt; ihr Rueckgabewert ist ihr Vertrag.", richtig:true,
+         warum:"Ein Composable kapselt reaktiven Zustand und Logik in einer Funktion. Was sie zurückgibt (refs, computed, Funktionen), ist genau das, was nach aussen sichtbar ist — der Rest bleibt privat."},
+        {text:"Eine Komponente ohne Template.", richtig:false,
+         warum:"Es rendert nichts. Ein Composable ist eine Funktion, die Reaktivitaet und Logik bündelt und über ihren Rueckgabewert freigibt."},
+        {text:"Eine globale Konfigurationsdatei.", richtig:false,
+         warum:"Es ist eine aufrufbare Funktion, kein statischer Konfig-Block. Ihr Rueckgabewert ist der Vertrag."},
+        {text:"Ein Vue-Plugin.", richtig:false,
+         warum:"Plugins hängen sich an die App-Instanz. Ein Composable ist einfach eine Funktion, die du in setup aufrufst."}
+      ]},
+    { runde:2, typ:"Was passiert hier?", frage:"Du willst, dass ALLE Komponenten sich denselben Zähler teilen. Wo deklarierst du const anzahl = ref(0)?",
+      code:"// useZaehler.js\nconst anzahl = ref(0)          // Stelle A: Modul-Ebene\n\nexport function useZaehler() {\n  // Stelle B: pro Aufruf\n  return { anzahl }\n}",
+      optionen:[
+        {text:"Stelle A — auf Modul-Ebene, ausserhalb der Funktion.", richtig:true,
+         warum:"Auf Modul-Ebene existiert der ref genau einmal und wird von jedem Aufruf geteilt. Staende er in der Funktion (Stelle B), bekäme jeder Aufruf seinen eigenen, frischen Zustand."},
+        {text:"Stelle B — innerhalb der Funktion.", richtig:false,
+         warum:"Das gibt jeder Komponente eine eigene, getrennte Kopie. Für GETEILTEN Zustand muss der ref auf Modul-Ebene stehen (Stelle A)."},
+        {text:"Egal, beide teilen den Zustand.", richtig:false,
+         warum:"Es macht den Unterschied. Modul-Ebene bedeutet einmal für alle; in der Funktion bedeutet pro Aufruf neu."},
+        {text:"Zustand teilen geht nur mit Pinia.", richtig:false,
+         warum:"Pinia ist dafür gemacht, aber ein ref auf Modul-Ebene teilt Zustand ebenso — genau der Trick hier."}
+      ]},
+    { runde:2, typ:"Multiple Choice", frage:"Wofür ist customRef gedacht?",
+      optionen:[
+        {text:"Um selbst zu bestimmen, wann ein Wert verfolgt und wann er ausgelöst wird — etwa für ein Debounce.", richtig:true,
+         warum:"customRef gibt dir track und trigger in die Hand. Damit kannst du das Auslösen verzögern (Debounce), sodass z. B. eine Sucheingabe erst nach kurzer Ruhe reagiert."},
+        {text:"Um einen ref global zu machen.", richtig:false,
+         warum:"Reichweite ist eine Frage des Ortes der Deklaration, nicht von customRef. Dessen Sinn ist die Kontrolle über track und trigger."},
+        {text:"Um Objekte tief einzufrieren.", richtig:false,
+         warum:"Das wäre readonly. customRef steuert, wann verfolgt und ausgelöst wird."},
+        {text:"Um Komponenten zwischenzuspeichern.", richtig:false,
+         warum:"Das ist KeepAlive. customRef steuert die Reaktivitaet eines einzelnen Wertes."}
+      ]},
+    { runde:2, typ:"Wahr oder falsch", frage:"<Transition> kann beliebig viele Elemente gleichzeitig animieren.",
+      optionen:[
+        {text:"Falsch — <Transition> umschliesst genau ein Element; für Listen gibt es <TransitionGroup>.", richtig:true,
+         warum:"<Transition> animiert den Ein- und Austritt eines einzelnen Elements (oder einer Komponente). Sobald mehrere Einträge in einer Liste kommen und gehen, ist <TransitionGroup> das richtige Werkzeug."},
+        {text:"Wahr, <Transition> nimmt beliebig viele Kinder.", richtig:false,
+         warum:"Nein, es ist auf ein Element ausgelegt. Für mehrere bewegte Listenelemente nimmst du <TransitionGroup>."}
+      ]},
+    { runde:2, typ:"Multiple Choice", frage:"Du änderst das :key an einem Element. Was löst das aus?",
+      optionen:[
+        {text:"Vue zerstört das alte Element und erstellt ein neues — die Enter-Transition läuft neu.", richtig:true,
+         warum:"Ein neues :key ist für Vue eine neue Identität. Das alte Element geht (Leave), das neue kommt (Enter). Genau damit erzwingt man den Neustart einer Animation, etwa beim Wechsel der Detailkarte."},
+        {text:"Nichts, :key ist nur für v-for.", richtig:false,
+         warum:":key steuert die Identität überall, nicht nur in Listen. Ein Wechsel erzwingt Zerstören und Neuaufbau."},
+        {text:"Das Element wird nur neu gerendert, bleibt aber dasselbe.", richtig:false,
+         warum:"Bei gleichem :key ja — aber ein neues :key tauscht die Identität aus und baut das Element neu auf."},
+        {text:"Die Komponente wirft einen Fehler.", richtig:false,
+         warum:"Kein Fehler. Ein neues :key ist ein bewusster Neustart des Elements."}
+      ]},
+    { runde:2, typ:"Multiple Choice", frage:"Was macht <KeepAlive>?",
+      optionen:[
+        {text:"Es hält eine inaktive Komponente im Speicher, statt sie zu zerstören — ihr Zustand bleibt erhalten.", richtig:true,
+         warum:"Ohne KeepAlive wird eine ausgeblendete Komponente zerstört und beim Zurückkehren frisch aufgebaut. KeepAlive bewahrt sie samt Zustand (etwa Scrollposition oder Eingaben) für den nächsten Auftritt."},
+        {text:"Es verhindert, dass eine Komponente je zerstört wird.", richtig:false,
+         warum:"Nicht dauerhaft — es puffert inaktive Komponenten. Zerstört wird nur aufgeschoben, nicht komplett unterbunden."},
+        {text:"Es lädt eine Komponente schneller vom Server.", richtig:false,
+         warum:"Mit dem Laden vom Server hat es nichts zu tun. Es bewahrt bereits erstellte Komponenten im Speicher."},
+        {text:"Es hält eine Netzwerkverbindung offen.", richtig:false,
+         warum:"Es geht um Komponenten im Speicher, nicht um Verbindungen. Der Zustand der inaktiven Komponente bleibt erhalten."}
+      ]},
+
+    // ============ RUNDE 4 — DIE GRENZE ============
+    { runde:3, typ:"Multiple Choice", frage:"Warum ein eigener kleiner Server vor der Met-API, statt direkt aus dem Browser zu rufen?",
+      optionen:[
+        {text:"Eine Grenze löst mehreres auf einmal: kein CORS, eine saubere Form, Cache und Messung an einer Stelle.", richtig:true,
+         warum:"Der Server ist die eine Zwischenschicht. Er nimmt dem Browser CORS ab, normalisiert die rohe Antwort, cached sie und misst die Dauer. Eine gut gesetzte Grenze löst genau diese Probleme zusammen."},
+        {text:"Nur, damit es mehr Dateien gibt.", richtig:false,
+         warum:"Die Schicht hat einen klaren Zweck: CORS weg, Form saeubern, cachen, messen. Sie ist kein Selbstzweck."},
+        {text:"Weil der Browser kein fetch kann.", richtig:false,
+         warum:"Der Browser kann fetch. Der Server löst CORS, Normalisierung, Cache und Messung — Dinge, die im Browser mühsam oder unmöglich wären."},
+        {text:"Damit die Met-API schneller antwortet.", richtig:false,
+         warum:"Die Met wird nicht schneller. Der Gewinn ist der Cache davor plus die saubere Grenze — der zweite Zugriff kommt vom Tisch, nicht aus dem Tresor."}
+      ]},
+    { runde:3, typ:"Multiple Choice", frage:"Die Met liefert ein Objekt mit rund 50 Feldern. Was überquert die Grenze zum Client?",
+      optionen:[
+        {text:"Nur die Katalogkarte mit 7 Feldern: id, titel, kuenstler, jahr, medium, abteilung, bild.", richtig:true,
+         warum:"Die Grenze entscheidet, was hinüberdarf. toKatalogkarte() verdichtet die rohe 50-Feld-Antwort auf die sieben Felder, die der Client wirklich braucht. Fehlt etwas, setzt der Server ruhige Rueckfallwerte statt Lücken."},
+        {text:"Die komplette rohe Antwort der Met; der Client sucht sich heraus, was er braucht.", richtig:false,
+         warum:"Dann leckt die fremde Form in deinen Client. Die Grenze normalisiert auf die sieben Felder, damit der Client nie an der Met klebt."},
+        {text:"Nur die id, den Rest holt der Client selbst.", richtig:false,
+         warum:"Der Client soll die Met gar nicht kennen. Der Server reicht die fertige Katalogkarte mit allen sieben Feldern."},
+        {text:"Gar nichts, der Client rendert direkt aus dem Cache.", richtig:false,
+         warum:"Der Cache liegt hinter dem Server. Zum Client geht die normalisierte Katalogkarte."}
+      ]},
+    { runde:3, typ:"Was zeigt der Laufzettel?", frage:"Erster Klick auf eine Karte. Was zeigt dieser Laufzettel?",
+      laufzettel:{source:"netz", ms:"612", ttl:"60"},
+      optionen:[
+        {text:"Aus dem Tresor geholt (~600 ms), jetzt frisch für 60 s auf dem Tisch.", richtig:true,
+         warum:"source: netz heisst Miss — die Karte lag nicht im Cache, der Server musste die Met fragen (~600 ms). Die Antwort wird für die TTL von 60 s abgelegt, der nächste Zugriff kommt vom Tisch."},
+        {text:"Zweiter Zugriff aus dem Cache, sehr schnell.", richtig:false,
+         warum:"Ein Cache-Treffer staende als source: cache mit rund 1 ms da. netz und 612 ms sind der teure erste Weg in den Tresor."},
+        {text:"Ein Fehler, die Anfrage ist fehlgeschlagen.", richtig:false,
+         warum:"Kein Fehler — ein Fehlschlag käme als 502 ohne Laufzettel. Hier lief alles, nur eben über den Tresor."},
+        {text:"Die Karte bleibt jetzt für immer im Cache.", richtig:false,
+         warum:"Nur für die TTL von 60 s. Danach ist sie abgelaufen und der nächste Zugriff geht wieder in den Tresor."}
+      ]},
+    { runde:3, typ:"Was zeigt der Laufzettel?", frage:"Direkt danach klickst du dieselbe Karte erneut. Der Laufzettel zeigt jetzt das hier — welche Reihenfolge steckt dahinter?",
+      laufzettel:{source:"cache", ms:"0.9", ttl:"60"},
+      optionen:[
+        {text:"Treffer vom Tisch (~1 ms). Cache-aside: erst im Cache nachsehen, Treffer, direkt zurückgeben — ohne den Tresor.", richtig:true,
+         warum:"source: cache mit unter 1 ms ist der Treffer. Cache-aside prueft immer zuerst den Cache; liegt die Karte da und die TTL läuft noch, geht sie ohne Umweg zurück. Der Tresor bleibt zu."},
+        {text:"Der Server fragt immer erst die Met und legt danach in den Cache.", richtig:false,
+         warum:"Umgekehrt: Cache-aside sieht zuerst im Cache nach. Nur bei einem Miss geht es zur Met, dann wird abgelegt. Sonst gäbe es nie einen 1-ms-Treffer."},
+        {text:"~1 ms bedeutet, die Met war diesmal schneller.", richtig:false,
+         warum:"Die Met liegt bei rund 600 ms. Unter 1 ms ist nur aus dem Speicher möglich — der Cache, nicht der Tresor."},
+        {text:"Der Cache wird bei jedem Klick neu befüllt.", richtig:false,
+         warum:"Beim Treffer wird nichts neu geholt. Neu befüllt (SET mit TTL) wird nur beim Miss."}
+      ]},
+    { runde:3, typ:"Multiple Choice", frage:"Auf dem Rechner läuft kein Redis. Was passiert beim Start des Servers?",
+      optionen:[
+        {text:"Er fällt auf eine In-Memory-Map mit demselben Vertrag zurück — eine Logzeile, der Laufzettel sagt dann map.", richtig:true,
+         warum:"Der Cache steckt hinter einer kleinen Schnittstelle (get / set(ttl)). Ist Redis nicht erreichbar, springt eine Map mit genau demselben Verhalten ein. Für den Rest des Systems ändert sich nichts ausser dem Wort auf dem Laufzettel — deshalb braucht niemand Redis, um mitzubauen."},
+        {text:"Der Server stürzt ab, ohne Redis geht nichts.", richtig:false,
+         warum:"Gerade nicht — der Rueckfall auf die Map hält alles am Laufen. Das ist der Sinn des sauberen Rueckfalls."},
+        {text:"Der Cache wird abgeschaltet, jeder Zugriff geht in den Tresor.", richtig:false,
+         warum:"Es gibt weiter einen Cache, nur eben als Map im Speicher. Treffer bleiben schnell."},
+        {text:"Der Server wartet, bis Redis irgendwann startet.", richtig:false,
+         warum:"Er hängt nicht: der Verbindungsversuch ist zeitlich begrenzt, dann übernimmt die Map."}
+      ]},
+    { runde:3, typ:"Was passiert hier?", frage:"Du klickst schnell Karte A, dann Karte B. Die langsame Antwort von A trifft NACH B ein. Wie verhindert das System, dass A am Ende die Ansicht überschreibt?",
+      optionen:[
+        {text:"Jede Anfrage bekommt eine fortlaufende Nummer; nur die neueste zählt, die alte wird per AbortController abgebrochen.", richtig:true,
+         warum:"Der Client merkt sich eine monoton steigende requestId. Trifft eine Antwort ein, deren Nummer nicht die neueste ist, wird sie verworfen. Zusätzlich bricht der AbortController die überholte Anfrage aktiv ab. So gewinnt immer die zuletzt gewählte Karte."},
+        {text:"Man wartet einfach, bis A fertig ist, bevor man B klicken darf.", richtig:false,
+         warum:"Das würde die Oberflaeche blockieren. Stattdessen darf B sofort starten; die Nummerierung sorgt dafür, dass die überholte Antwort von A verworfen wird."},
+        {text:"Die zuletzt eingetroffene Antwort gewinnt immer.", richtig:false,
+         warum:"Genau das wäre der Fehler: A trifft zuletzt ein und würde B überschreiben. Deshalb zählt die neueste Anfrage-Nummer, nicht die letzte Ankunft."},
+        {text:"Der Cache verhindert das automatisch.", richtig:false,
+         warum:"Der Cache macht Zugriffe schnell, ordnet aber keine Antworten. Gegen die Wettlaufsituation hilft die Anfrage-Nummer plus der Abbruch."}
+      ]}
+  ];
+
+  var RAENGE = [
+    { min:0,  max:8,  titel:"Katalog-Gast",
+      zeile:"Ein erster Rundgang durch das Archiv. Geh die Runden ruhig noch einmal an — die Erklärungen bleiben dabei stehen und zeigen jedes Mal etwas mehr." },
+    { min:9,  max:14, titel:"Lesesaal-Stammgast",
+      zeile:"Du kennst den Lesesaal schon gut. Ein paar Regale sind noch neu; das gibt sich mit der nächsten Runde und einem zweiten Blick auf das Warum." },
+    { min:15, max:19, titel:"Katalogführer:in",
+      zeile:"Du findest dich sicher im Katalog zurecht und erklärst die Grenze schon selbst. Ein paar Feinheiten am Cache und am Laufzettel warten noch." },
+    { min:20, max:23, titel:"Archivar:in",
+      zeile:"Fast das ganze Haus im Griff — von der Katalogkarte über den Lebenszyklus bis zum Laufzettel. Sauber gelesen." },
+    { min:24, max:24, titel:"Archiv-Meister:in",
+      zeile:"Vom Vertrag bis zum Cache sitzt jeder Griff. Das Archiv gehört dir — bring dein eigenes System am Wochenende genauso sicher zum Laufen." }
+  ];
+
+  // ---------- Zustand ----------
+  var state;
+  function frischerZustand(){
+    return { mode:"intro", index:0, antworten:new Array(FRAGEN.length).fill(null), zeigeRundeAbschluss:-1 };
+  }
+
+  function punkteGesamt(){
+    var s=0; for(var i=0;i<state.antworten.length;i++){ if(state.antworten[i] && state.antworten[i].richtig) s++; } return s;
+  }
+  function fragenDerRunde(r){ var out=[]; for(var i=0;i<FRAGEN.length;i++){ if(FRAGEN[i].runde===r) out.push(i);} return out; }
+  function punkteRunde(r){ var idx=fragenDerRunde(r), s=0; for(var i=0;i<idx.length;i++){ var a=state.antworten[idx[i]]; if(a&&a.richtig)s++; } return s; }
+
+  // ---------- DOM-Helfer ----------
+  function el(tag, cls, txt){ var e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e; }
+  var app = document.getElementById("app");
+  function leeren(){ while(app.firstChild) app.removeChild(app.firstChild); }
+
+  // ---------- Rendern ----------
+  function render(){
+    leeren();
+    if(state.mode==="intro") return renderIntro();
+    if(state.mode==="quiz") return renderFrage();
+    if(state.mode==="rundeAbschluss") return renderRundeAbschluss();
+    if(state.mode==="finale") return renderFinale();
+  }
+
+  function renderIntro(){
+    var marke=el("div","marke"); marke.appendChild(el("span",null,"Das Archiv"));
+    var p1=el("span","punkt"," · "); marke.appendChild(p1); marke.appendChild(el("span",null,"Woche 2 · Wochenquiz"));
+    app.appendChild(marke);
+    app.appendChild(el("h1","titelzeile","Das grosse Wochenquiz"));
+    app.appendChild(el("p","unterzeile","Vier Runden durch die Woche: der Vertrag der Komponenten, ihr Lebenszyklus, die Werkzeuge und die Grenze zum Server. 24 Karten, jede mit sofortiger Begründung — dort liegt das eigentliche Lesen."));
+
+    var karte=el("div","karte an");
+    var ul=el("ul","intro-liste");
+    var punkte=[
+      ["1","24 Fragen in 4 benannten Runden zu je 6 Karten."],
+      ["2","Jede Antwort zeigt sofort das Warum in ein, zwei Saetzen."],
+      ["3","Laufender Punktestand, Fortschritt je Runde, am Ende ein Archiv-Rang."],
+      ["4","Alles offline lesbar — keine Verbindung, kein Konto, kein Netz."]
+    ];
+    punkte.forEach(function(p){ var li=el("li"); li.appendChild(el("span","nr",p[0])); li.appendChild(el("span",null,p[1])); ul.appendChild(li); });
+    karte.appendChild(ul);
+    var reihe=el("div","knopfreihe");
+    var b=el("button","knopf","Das Archiv betreten"); b.addEventListener("click",function(){ state.mode="quiz"; state.index=0; render(); });
+    reihe.appendChild(b); karte.appendChild(reihe);
+    app.appendChild(karte);
+  }
+
+  function renderLeiste(){
+    var r=FRAGEN[state.index].runde, meta=RUNDEN[r];
+    var leiste=el("div","leiste");
+    var links=el("div","runde");
+    links.appendChild(el("span","rz","Runde "+(r+1)+"/4"));
+    links.appendChild(el("span","rn","„"+meta.name+"“"));
+    leiste.appendChild(links);
+    var rechts=el("div"); rechts.style.display="flex"; rechts.style.gap="10px"; rechts.style.alignItems="center";
+    rechts.appendChild(el("span","zähler","Frage "+(state.index+1)+"/"+FRAGEN.length));
+    rechts.appendChild(el("span","punkte","Punkte "+punkteGesamt()+"/"+FRAGEN.length));
+    leiste.appendChild(rechts);
+
+    // Punkte-Dots für die aktuelle Runde
+    var dots=el("div","punkte-dots");
+    var idx=fragenDerRunde(r);
+    for(var i=0;i<idx.length;i++){
+      var d=el("span","pd"); var a=state.antworten[idx[i]];
+      if(a){ d.className+= a.richtig?" gut":" schlecht"; }
+      if(idx[i]===state.index){ d.className+=" jetzt"; }
+      dots.appendChild(d);
+    }
+    leiste.appendChild(dots);
+    app.appendChild(leiste);
+  }
+
+  function renderFrage(){
+    renderLeiste();
+    var q=FRAGEN[state.index];
+    var karte=el("div","karte an");
+
+    var kopf=el("div","fragekopf");
+    kopf.appendChild(el("span","rundechip",RUNDEN[q.runde].tag));
+    kopf.appendChild(el("span","typ",q.typ));
+    karte.appendChild(kopf);
+
+    karte.appendChild(el("p","frage",q.frage));
+
+    if(q.code){
+      var pre=el("pre","code");
+      // Kommentare zart einfärben, Rest als Text (kein innerHTML von Nutzerinhalt)
+      renderCode(pre, q.code);
+      karte.appendChild(pre);
+    }
+    if(q.laufzettel){
+      karte.appendChild(bauLaufzettel(q.laufzettel));
+    }
+
+    var box=el("div","optionen");
+    var antwort=state.antworten[state.index]; // null oder {wahl, richtig}
+    var buchst="ABCDEFGH";
+    q.optionen.forEach(function(opt, oi){
+      var b=el("button","opt");
+      b.setAttribute("type","button");
+      var mk=el("span","marker",buchst[oi]); b.appendChild(mk);
+      b.appendChild(el("span",null,opt.text));
+      if(antwort){
+        b.disabled=true;
+        if(opt.richtig){ b.className="opt richtig"; mk.textContent="✓"; }
+        else if(oi===antwort.wahl){ b.className="opt falsch"; mk.textContent="✕"; }
+        else { b.className="opt blass"; }
+      } else {
+        b.addEventListener("click", function(){ beantworte(oi); });
+      }
+      box.appendChild(b);
+    });
+    karte.appendChild(box);
+
+    if(antwort){
+      var q2=FRAGEN[state.index];
+      var gewählt=q2.optionen[antwort.wahl];
+      var w=el("div","warum "+(antwort.richtig?"gut":"schlecht"));
+      w.appendChild(el("span","w-titel", antwort.richtig?"Richtig · warum":"Daneben · warum"));
+      var pw=el("p"); pw.style.margin="0";
+      if(antwort.richtig){
+        pw.textContent=gewählt.warum;
+      } else {
+        // Warum die Wahl daneben lag + was stimmt
+        var richtigeOpt=null; q2.optionen.forEach(function(o){ if(o.richtig) richtigeOpt=o; });
+        pw.textContent=gewählt.warum+"  Richtig ist: "+richtigeOpt.warum;
+      }
+      w.appendChild(pw);
+      karte.appendChild(w);
+
+      var reihe=el("div","knopfreihe");
+      var letzte=(state.index===FRAGEN.length-1);
+      var naechsteRundeStart=(!letzte && FRAGEN[state.index+1].runde!==q2.runde);
+      var b=el("button","knopf messing", letzte?"Zum Ergebnis":(naechsteRundeStart?"Runde abschliessen":"Weiter"));
+      b.addEventListener("click", weiter);
+      reihe.appendChild(b);
+      karte.appendChild(reihe);
+    }
+
+    app.appendChild(karte);
+  }
+
+  function renderCode(pre, codeStr){
+    var zeilen=codeStr.split("\n");
+    zeilen.forEach(function(z, i){
+      var komm = z.indexOf("//")>=0 ? z.indexOf("//") : (z.indexOf("<!--")>=0 ? z.indexOf("<!--") : -1);
+      if(komm>=0){
+        pre.appendChild(document.createTextNode(z.slice(0,komm)));
+        var c=el("span","komm", z.slice(komm));
+        pre.appendChild(c);
+      } else {
+        pre.appendChild(document.createTextNode(z));
+      }
+      if(i<zeilen.length-1) pre.appendChild(document.createTextNode("\n"));
+    });
+  }
+
+  function bauLaufzettel(lz){
+    var netz=(lz.source==="netz");
+    var box=el("div","laufzettel "+(netz?"netz":"cache"));
+    box.appendChild(el("span","lz-label", netz?"Aus dem Tresor":"Vom Tisch"));
+    var f1=el("span","lz-feld"); f1.appendChild(el("b",null,"source")); f1.appendChild(document.createTextNode(": "+lz.source)); box.appendChild(f1);
+    var f2=el("span","lz-feld"); f2.appendChild(el("b",null,lz.ms)); f2.appendChild(document.createTextNode(" ms")); box.appendChild(f2);
+    var f3=el("span","lz-feld"); f3.appendChild(document.createTextNode("TTL ")); f3.appendChild(el("b",null,lz.ttl)); f3.appendChild(document.createTextNode(" s")); box.appendChild(f3);
+    return box;
+  }
+
+  function beantworte(oi){
+    if(state.antworten[state.index]) return;
+    var richtig=!!FRAGEN[state.index].optionen[oi].richtig;
+    state.antworten[state.index]={ wahl:oi, richtig:richtig };
+    render();
+  }
+
+  function weiter(){
+    var jetzt=FRAGEN[state.index];
+    if(state.index===FRAGEN.length-1){ state.mode="finale"; render(); return; }
+    var nächste=FRAGEN[state.index+1];
+    if(nächste.runde!==jetzt.runde){
+      state.zeigeRundeAbschluss=jetzt.runde;
+      state.mode="rundeAbschluss";
+      render();
+      return;
+    }
+    state.index++; render();
+  }
+
+  function renderRundeAbschluss(){
+    var r=state.zeigeRundeAbschluss, meta=RUNDEN[r];
+    var idx=fragenDerRunde(r), gut=punkteRunde(r), n=idx.length;
+    var karte=el("div","karte an");
+    karte.appendChild(el("div","marke","Runde "+(r+1)+" abgeschlossen"));
+    karte.appendChild(el("h2","rangtitel","„"+meta.name+"“"));
+    var z=el("p","rangzeile"); z.textContent=meta.sub+" — "+gut+" von "+n+" Karten richtig gelesen."; karte.appendChild(z);
+
+    var dots=el("div","punkte-dots"); dots.style.marginTop="16px";
+    for(var i=0;i<idx.length;i++){ var d=el("span","pd"); var a=state.antworten[idx[i]]; d.className+= (a&&a.richtig)?" gut":" schlecht"; dots.appendChild(d); }
+    karte.appendChild(dots);
+
+    var reihe=el("div","knopfreihe");
+    var weiterBtn=el("button","knopf messing", (r<RUNDEN.length-1?"Weiter zu Runde "+(r+2):"Zum Ergebnis"));
+    weiterBtn.addEventListener("click", function(){
+      state.index=idx[idx.length-1]+1; state.mode="quiz"; render();
+    });
+    var wdh=el("button","knopf leise","Runde wiederholen");
+    wdh.addEventListener("click", function(){
+      for(var i=0;i<idx.length;i++){ state.antworten[idx[i]]=null; }
+      state.index=idx[0]; state.mode="quiz"; render();
+    });
+    reihe.appendChild(weiterBtn); reihe.appendChild(wdh);
+    karte.appendChild(reihe);
+    app.appendChild(karte);
+  }
+
+  function rangFuer(p){ for(var i=0;i<RAENGE.length;i++){ if(p>=RAENGE[i].min && p<=RAENGE[i].max) return RAENGE[i]; } return RAENGE[0]; }
+
+  function renderFinale(){
+    var p=punkteGesamt(), rang=rangFuer(p);
+    app.appendChild(el("div","marke","Das Archiv · Wochenbilanz"));
+    var karte=el("div","karte an");
+
+    var gz=el("div","gross-zahl"); gz.appendChild(document.createTextNode(String(p)));
+    var von=el("span","von"," / "+FRAGEN.length); gz.appendChild(von); karte.appendChild(gz);
+    karte.appendChild(el("h2","rangtitel",rang.titel));
+    karte.appendChild(el("p","rangzeile",rang.zeile));
+
+    // Balken je Runde
+    var balken=el("div","balken");
+    for(var r=0;r<RUNDEN.length;r++){
+      var idx=fragenDerRunde(r), gut=punkteRunde(r), n=idx.length;
+      var zeile=el("div","balkenzeile");
+      zeile.appendChild(el("span","name","„"+RUNDEN[r].name+"“"));
+      var spur=el("div","spur"); var fuell=el("div","fuell"); fuell.style.width=(Math.round(gut/n*100))+"%"; spur.appendChild(fuell); zeile.appendChild(spur);
+      zeile.appendChild(el("span","wert", gut+"/"+n));
+      balken.appendChild(zeile);
+    }
+    karte.appendChild(balken);
+
+    // Wochenend-Merkzettel: Liefertag / kein Deploy
+    var m=el("div","merkzettel");
+    m.appendChild(el("span","m-titel","Merkzettel fürs Wochenende"));
+    var mp=el("p");
+    mp.appendChild(document.createTextNode("Am eigenen System gilt derselbe Liefertag: "));
+    mp.appendChild(el("code",null,"bun run build")); mp.appendChild(document.createTextNode(" → "));
+    mp.appendChild(el("code",null,"vite preview")); mp.appendChild(document.createTextNode(" → Lighthouse gegen die lokale Preview. Kein Deploy. Der Beweis liegt bei dir: gebaut, gemessen, im git-Log als Faden sichtbar."));
+    m.appendChild(mp);
+    karte.appendChild(m);
+
+    var reihe=el("div","knopfreihe");
+    var neu=el("button","knopf messing","Von vorn");
+    neu.addEventListener("click", function(){ state=frischerZustand(); render(); window.scrollTo(0,0); });
+    reihe.appendChild(neu);
+
+    // schwaechste Runde noch einmal
+    var schwach=0, min=99;
+    for(var r2=0;r2<RUNDEN.length;r2++){ var g=punkteRunde(r2); if(g<min){ min=g; schwach=r2; } }
+    var wdh=el("button","knopf leise","Schwaechste Runde wiederholen");
+    wdh.addEventListener("click", function(){
+      var idx2=fragenDerRunde(schwach);
+      for(var i=0;i<idx2.length;i++){ state.antworten[idx2[i]]=null; }
+      state.index=idx2[0]; state.mode="quiz"; render(); window.scrollTo(0,0);
+    });
+    reihe.appendChild(wdh);
+    karte.appendChild(reihe);
+
+    app.appendChild(karte);
+    window.scrollTo(0,0);
+  }
+
+  // ---------- Start ----------
+  state=frischerZustand();
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>03 · Cache-aside &amp; TTL · Das Archiv</title>
+<link rel="stylesheet" href="_archiv.css" />
+</head>
+<body>
+<main class="seite">
+  <p class="marke">Das Archiv · Konzept 03</p>
+  <header class="kopf">
+    <h1>Cache-aside &amp; TTL</h1>
+    <p class="dachzeile">
+      Warum ist der zweite Klick auf dasselbe Objekt um ein Vielfaches
+      schneller als der erste? Und wie lange darf sich der Tisch auf eine
+      Karte verlassen, bevor er noch einmal in den Tresor muss?
+    </p>
+  </header>
+
+  <p>
+    In Konzept 01 stand der Lesetisch zwischen dir und dem Tresor: du nennst
+    eine Nummer, der Tisch holt das Blatt, schreibt eine Katalogkarte ab und
+    reicht sie dir. Jedes Mal derselbe Weg, jedes Mal die volle Wartezeit.
+    Ein guter Lesetisch merkt sich aber, was er schon einmal abgeschrieben
+    hat. Legt jemand dieselbe Nummer noch einmal vor, greift der Tisch zur
+    liegen gebliebenen Karte, statt erneut in den Tresor zu laufen. Genau
+    das ist <strong>cache-aside</strong>: dein Server prüft zuerst das
+    eigene Gedächtnis, bevor er die langsame, fremde Welt überhaupt
+    anspricht.
+  </p>
+
+  <h2><span class="nr">§1</span>Das Prinzip: erst schauen, dann holen</h2>
+  <p>
+    Der Name <em>cache-aside</em> beschreibt genau diese Reihenfolge. Der
+    Cache liegt <em>neben</em> dem eigentlichen Weg zur Quelle, nicht davor
+    verschmolzen. Deine Anwendung entscheidet bei jeder Anfrage selbst:
+    zuerst auf den Tisch schauen. Liegt die Karte dort, ist die Sache
+    erledigt. Liegt sie nicht dort, geht der Tisch in den Tresor, holt sie,
+    schreibt sie sauber ab, und legt die Kopie diesmal
+    <strong>zusätzlich</strong> auf den Tisch, für alle, die danach fragen.
+    Ein anderer Name für dasselbe Muster ist <em>lazy loading</em>: der
+    Tisch füllt sich nicht im Voraus, sondern erst durch echte Nachfrage.
+  </p>
+
+  <div class="merk">
+    <span class="titel">Kernsatz</span>
+    <p>
+      Cache-aside ist kein Trick am Tresor. Der Tresor weiß nichts von
+      einem Cache. Die Entscheidung liegt vollständig bei deinem Server:
+      erst fragen, ob die Antwort schon irgendwo liegt, und nur im
+      Ernstfall den langsamen Weg gehen.
+    </p>
+  </div>
+
+  <h2><span class="nr">§2</span>Der Lesealgorithmus</h2>
+  <p>
+    Vier Schritte, immer in derselben Reihenfolge. Der Anfang ist unabhängig
+    davon, ob am Ende ein Treffer steht oder nicht:
+  </p>
+  <ol class="schritte">
+    <li>
+      Einen <strong>Schlüssel</strong> bauen, der das Objekt eindeutig und
+      stabil benennt, zum Beispiel <code>archiv:objekt:436535</code>.
+    </li>
+    <li>
+      Mit diesem Schlüssel den Tisch fragen: <code>cache.get(key)</code>.
+    </li>
+    <li>
+      <strong>Treffer (Hit):</strong> die Karte liegt bereits da. Zurück
+      geht sofort <code>{ source: "cache", ms, ttl, data }</code>, schnell.
+    </li>
+    <li>
+      <strong>Kein Treffer (Miss):</strong> erst jetzt in den Tresor. Die
+      Antwort wird normalisiert und per <code>cache.set(key, karte, ttl)</code>
+      auf dem Tisch abgelegt, dann geht die Antwort hinaus:
+      <code>{ source: "netz", ms, ttl, data }</code>, langsam, aber nur
+      dieses eine Mal.
+    </li>
+  </ol>
+
+  <div class="code">
+    <span class="titelzeile">Skizze, der Lesealgorithmus als Pseudocode</span>
+<pre><span class="k">async function</span> <span class="f">leseObjekt</span>(id) {
+  <span class="k">const</span> key = <span class="s">`archiv:objekt:${id}`</span>       <span class="c">// stabil, eindeutig, mit Namensraum</span>
+  <span class="k">const</span> start = performance.<span class="f">now</span>()
+
+  <span class="k">const</span> treffer = <span class="k">await</span> cache.<span class="f">get</span>(key)
+  <span class="k">if</span> (treffer) {
+    <span class="k">return</span> { source: <span class="s">"cache"</span>, ms: performance.<span class="f">now</span>() - start, ttl: <b>60</b>, data: treffer }
+  }
+
+  <span class="c">// Miss, erst hier wird der Tresor überhaupt bemüht</span>
+  <span class="k">const</span> roh = <span class="k">await</span> <span class="f">holeVomTresor</span>(id)
+  <span class="k">const</span> karte = <span class="f">normalisiere</span>(roh)          <span class="c">// die kleine Katalogkarte, nicht das rohe Blatt</span>
+  <span class="k">await</span> cache.<span class="f">set</span>(key, karte, <b>60</b>)      <span class="c">// TTL in Sekunden</span>
+
+  <span class="k">return</span> { source: <span class="s">"netz"</span>, ms: performance.<span class="f">now</span>() - start, ttl: <b>60</b>, data: karte }
+}</pre>
+  </div>
+  <p class="leise">„Die vollständige Cache-aside-Funktion baust du in Aufgabe 04."</p>
+
+  <h2><span class="nr">§3</span>Erst messen, dann cachen</h2>
+  <p>
+    Der Laufzettel <code>{ source, ms, ttl, data }</code> aus Konzept 01 hat
+    genau hier seinen Zweck: <code>ms</code> misst mit
+    <code>performance.now()</code>, wie lange die Antwort tatsächlich
+    gebraucht hat. Ohne diese Zahl ist ein Cache nur eine Behauptung. Mit
+    ihr wird der Unterschied sichtbar, bevor überhaupt irgendetwas
+    optimiert wird.
+  </p>
+  <p>
+    Ruf dasselbe Objekt zweimal auf. Der erste Klick ist spürbar langsam,
+    weil er wirklich zum Tresor läuft:
+  </p>
+  <p class="mitte"><span class="badge netz"><span class="ms tab">631.5</span> ms</span></p>
+  <p>Der zweite Klick trifft auf die liegen gebliebene Karte:</p>
+  <p class="mitte"><span class="badge cache"><span class="ms tab">1.8</span> ms · TTL 60s</span></p>
+  <p>
+    Größenordnung: Netz liegt hier bei einigen hundert Millisekunden,
+    Cache bei ein bis zwei, grob das 300- bis 600-fache. Diese Regel
+    merkst du dir besser als jede einzelne Zahl:
+    <strong>erst messen, dann cachen.</strong> Wer optimiert, ohne vorher
+    gemessen zu haben, cacht am Ende oft genau die Stelle, die ohnehin
+    schon schnell war.
+  </p>
+
+  <h2><span class="nr">§4</span>TTL: das Verfallsdatum der Karte</h2>
+  <p>
+    Eine Karte, die für immer auf dem Tisch liegen bleibt, ist kein Cache
+    mehr, sondern eine Behauptung über die Vergangenheit. Die
+    <strong>TTL</strong> (time to live) legt fest, wie lange eine Karte als
+    gültig gilt, bevor der Tisch sie verwirft und beim nächsten Aufruf
+    wieder frisch aus dem Tresor holt.
+  </p>
+
+  <div class="tresor">
+    <span class="titel">Aus dem Tresor</span>
+    <p>
+      Kurze TTL heißt: die Karte ist selten veraltet, aber der Tisch läuft
+      häufiger in den Tresor, mehr Wartezeit für mehr Frische. Lange TTL
+      heißt: fast immer schnell, aber die Karte kann eine Weile nicht mehr
+      stimmen. Für diese Aufgabe reichen 60 Sekunden, lang genug, um den
+      Effekt beim zweiten Klick zu sehen, kurz genug, um nicht ewig auf
+      einer veralteten Karte sitzen zu bleiben. Das ist die kleine, klare
+      Ausgabe eines größeren Problems: zu wissen, wann eine Kopie nicht
+      mehr gilt, gehört zu den hartnäckigsten Fragen im Umgang mit Zustand
+      überhaupt.
+    </p>
+  </div>
+
+  <h2><span class="nr">§5</span>Zwei Wege durch denselben Tisch</h2>
+  <p>
+    Miss und Hit laufen durch dieselbe Funktion, aber nicht denselben Weg.
+    Beim Miss macht der Tisch einen Umweg über den Tresor und legt danach
+    ab, was er geholt hat:
+  </p>
+  <div class="fluss" role="img" aria-label="Cache-Miss: Leser fragt den leeren Tisch, der Tisch holt aus dem Tresor und legt die Karte ab, dann geht die Antwort zurück an den Leser">
+    <div class="knoten"><span class="rolle">Leser</span><span class="name">Browser (Vue)</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten tisch-k"><span class="rolle">Lesetisch</span><span class="name">cache.get → Miss</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten tresor-k"><span class="rolle">Tresor</span><span class="name">Fremde API</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten tisch-k"><span class="rolle">Lesetisch</span><span class="name">cache.set, TTL 60s</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten"><span class="rolle">Leser</span><span class="name">Browser (Vue)</span></div>
+  </div>
+  <p>Beim Hit bleibt der Tresor außen vor, der Tisch antwortet allein:</p>
+  <div class="fluss" role="img" aria-label="Cache-Hit: Leser fragt den Tisch, der Tisch hat die Karte bereits und antwortet direkt, ohne den Tresor zu fragen">
+    <div class="knoten"><span class="rolle">Leser</span><span class="name">Browser (Vue)</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten tisch-k"><span class="rolle">Lesetisch</span><span class="name">cache.get → Hit</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten"><span class="rolle">Leser</span><span class="name">Browser (Vue)</span></div>
+  </div>
+
+  <h2><span class="nr">§6</span>Eine Falle: was genau liegt auf dem Tisch?</h2>
+  <p>Der Cache ist nur so sauber wie das, was du in ihn legst.</p>
+  <div class="warnung">
+    <span class="titel">Falle</span>
+    <p>
+      Cache niemals das rohe Blatt aus dem Tresor, sondern die
+      normalisierte Katalogkarte. Wer die volle Antwort mit fünfzig Feldern
+      in den Cache legt, verschiebt das Formproblem aus Konzept 01 nur nach
+      hinten, jeder, der später aus dem Cache liest, sieht wieder die rohe
+      Form. Außerdem ist ein Schlüssel wie <code>436535</code> allein zu
+      knapp: ohne Namensraum (<code>archiv:objekt:436535</code>) kollidiert
+      er irgendwann mit einem Schlüssel aus einem ganz anderen Teil deiner
+      Anwendung.
+    </p>
+  </div>
+
+  <div class="frage">
+    <span class="titel">Die Frage des Tages</span>
+    <p>„Was genau liegt auf dem Tisch, und wie lange darfst du ihm noch trauen?"</p>
+  </div>
+
+  <div class="merk">
+    <span class="titel">Mitnehmen</span>
+    <p>
+      Cache-aside heißt: deine Anwendung fragt zuerst das eigene
+      Gedächtnis, bevor sie die langsame, fremde Welt bemüht. Der
+      Laufzettel aus Konzept 01 macht diesen Unterschied sichtbar, 
+      <code>source</code> und <code>ms</code> sagen genau, welcher der
+      beiden Wege gerade gelaufen ist. Und die TTL erinnert daran, dass
+      jede gespeicherte Antwort ein Verfallsdatum braucht, sonst ist sie
+      irgendwann keine Kopie mehr, sondern nur noch eine alte Behauptung.
+      Was aber, wenn selbst der Tresor nicht mehr antwortet? Genau davon
+      handelt Konzept 04: Graceful Degradation.
+    </p>
+  </div>
+
+  <nav class="fuss">
+    <a href="02-transport-zu-view-model.html">&larr; Zurück</a>
+    <a href="04-graceful-degradation.html">Weiter: Graceful Degradation &rarr;</a>
+  </nav>
+</main>
+</body>
+</html>

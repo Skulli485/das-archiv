@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>05 · Das Triple &amp; die Wächter · Das Archiv</title>
+<link rel="stylesheet" href="_archiv.css" />
+</head>
+<body>
+<main class="seite">
+  <p class="marke">Das Archiv · Konzept 05</p>
+  <header class="kopf">
+    <h1>Das Triple &amp; die Wächter</h1>
+    <p class="dachzeile">
+      Eine Anfrage ist niemals nur da oder nicht da. Sie hat einen Zustand mit
+      vier Gesichtern, und zwei Wächter, die dafür sorgen, dass am Ende
+      wirklich die richtige Antwort auf der Katalogkarte steht.
+    </p>
+  </header>
+
+  <p>
+    Konzept 01 hat die Grenze gebaut: dein Server als Lesetisch, der aus dem
+    Tresor holt und eine saubere Katalogkarte zurückgibt, in einem festen
+    Vertrag aus <code>source</code>, <code>ms</code>, <code>ttl</code> und
+    <code>data</code>. Diese Karte überquert die Grenze genau einmal. Was
+    danach mit ihr passiert, entscheidet sich nicht mehr am Tisch, sondern im
+    Browser, in genau der composable, die du in Aufgabe 03 baust.
+  </p>
+  <p>
+    Zwischen „ich will die Karte" und „ich habe die Karte" liegt eine
+    Zeitspanne. Und in dieser Zeitspanne kann viel passieren: der Nutzer
+    wartet, klickt weiter, verlässt die Seite. Eine belastbare composable hält
+    nicht nur den guten Fall aus, in dem genau eine Anfrage losläuft und brav
+    zurückkommt. Sie hält auch den Fall aus, in dem zwei Anfragen gleichzeitig
+    unterwegs sind.
+  </p>
+
+  <div class="fluss" role="img" aria-label="Die Antwort verlässt den Lesetisch und trifft im Browser auf eine Vue-Komponente">
+    <div class="knoten tisch-k"><span class="rolle">Lesetisch</span><span class="name">Dein Bun-Server</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten"><span class="rolle">Leser</span><span class="name">Vue-Komponente</span></div>
+  </div>
+
+  <h2><span class="nr">§1</span>Das Triple, das eigentlich ein Quadrupel ist</h2>
+  <p>
+    Der naheliegende erste Versuch ist ein einzelnes Flag: <code>isLoading</code>,
+    daneben vielleicht noch <code>data</code> und <code>error</code>. Das wirkt
+    einfach, und ist trotzdem ungenau. Ein Boolean kennt nur zwei Zustände.
+    Er kann nicht sagen: „Ich wurde noch nie gefragt." Und er kann nicht
+    gleichzeitig sagen: „Ich bin gerade dabei, aber der letzte Versuch ist
+    gescheitert."
+  </p>
+  <p>
+    Die klarere Lösung ist ein einzelner, benannter <code>zustand</code>
+    mit genau vier möglichen Werten. Kein Kombinieren mehrerer Booleans, kein
+    Raten daraus, ob <code>data === null</code> nun „noch nicht geladen" oder
+    „leer zurückgekommen" bedeutet.
+  </p>
+
+  <ul class="pillen">
+    <li class="pill">idle</li>
+    <li class="pill">laden</li>
+    <li class="pill">fertig</li>
+    <li class="pill">fehler</li>
+  </ul>
+
+  <table class="tabelle">
+    <thead>
+      <tr><th>Zustand</th><th>Wann</th><th>Was der Nutzer sieht</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>idle</code></td>
+        <td>Vor dem ersten Aufruf, noch nie gefragt.</td>
+        <td>Ein stiller Hinweis, keine Karte.</td>
+      </tr>
+      <tr>
+        <td><code>laden</code></td>
+        <td>Die Anfrage läuft, noch keine Antwort.</td>
+        <td>Ein Skeleton in Kartenform.</td>
+      </tr>
+      <tr>
+        <td><code>fertig</code></td>
+        <td>Antwort angekommen und gültig.</td>
+        <td>Die echte Katalogkarte.</td>
+      </tr>
+      <tr>
+        <td><code>fehler</code></td>
+        <td>Anfrage abgelehnt oder ohne Ersatz gescheitert.</td>
+        <td>Eine kurze Fehlermeldung.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="code">
+    <span class="titelzeile">useX.js, der Zustand, bevor irgendetwas anderes dazukommt</span>
+<pre><span class="c">// zustand kennt nur diese vier Werte, nie einen fünften</span>
+<span class="k">const</span> zustand = <span class="f">ref</span>(<span class="s">'idle'</span>)
+<span class="k">const</span> karte = <span class="f">ref</span>(<span class="k">null</span>)
+<span class="k">const</span> meta = <span class="f">ref</span>(<span class="k">null</span>)
+
+<span class="k">async function</span> <span class="f">laden</span>() {
+  zustand.value = <span class="s">'laden'</span>
+  <span class="k">try</span> {
+    <span class="k">const</span> antwort = <span class="k">await</span> <span class="f">fetchKarte</span>()
+    karte.value = antwort.data
+    meta.value = { source: antwort.source, ms: antwort.ms }
+    zustand.value = <span class="s">'fertig'</span>
+  } <span class="k">catch</span> {
+    zustand.value = <span class="s">'fehler'</span>
+  }
+}</pre>
+  </div>
+
+  <div class="merk">
+    <span class="titel">Kernsatz</span>
+    <p>
+      Ein einzelnes <code>isLoading</code> kennt nur zwei Zustände und kann
+      darum immer nur die Hälfte der Wahrheit sagen. Ein benannter
+      <code>zustand</code> mit vier Werten sagt in jedem Moment genau eine
+      Sache: was gerade gilt, nicht bloß, was gerade nicht gilt.
+    </p>
+  </div>
+
+  <h2><span class="nr">§2</span>Der Skeleton während der Wartezeit</h2>
+  <p>
+    Der erste Zugriff auf einen Tresor-Eintrag läuft über den Netz-Pfad aus
+    Konzept 03: echte Zeit, ungefähr <span class="tab">~600 ms</span>, bevor
+    die Antwort da ist. Genau in diesem Fenster steht <code>zustand</code> auf
+    <code>laden</code>, und genau hier entscheidet sich, ob die Seite ruhig
+    bleibt oder ob sie zuckt.
+  </p>
+  <p>
+    Ein leerer Bildschirm ist keine Antwort. Ein Layout, das bei Ankunft der
+    Karte plötzlich seine Höhe ändert, ist auch keine. Die Komponente zeigt
+    während <code>zustand === 'laden'</code> einen Platzhalter in der Form der
+    späteren Karte: gleiche Höhe, gleiche Ränder, nur ohne Inhalt. Kommt die
+    echte Karte an, ersetzt sie den Platzhalter, ohne dass darunter etwas
+    springt.
+  </p>
+
+  <div class="tresor">
+    <span class="titel">Aus Konzept 03</span>
+    <p>
+      Der erste Zugriff auf einen Eintrag ist immer der langsame Netz-Pfad,
+      etwa <span class="tab">~600 ms</span>. Jeder weitere Zugriff auf
+      denselben Eintrag kommt aus dem Cache des Lesetischs, in etwa
+      <span class="tab">~1 ms</span>. Der Skeleton überbrückt genau die erste,
+      langsame Wartezeit, beim zweiten Mal ist er meist zu kurz zu sehen, um
+      überhaupt aufzufallen.
+    </p>
+  </div>
+
+  <h2><span class="nr">§3</span>Der erste Wächter: AbortController</h2>
+  <p>
+    Ein Klick startet <code>fetchKarte()</code>. Bevor die Antwort da ist,
+    klickt der Nutzer einen anderen Eintrag an. Die erste Anfrage läuft
+    trotzdem weiter, im Hintergrund, obwohl niemand mehr auf sie wartet. Kommt
+    sie doch noch zurück, schreibt sie in <code>zustand</code> und
+    <code>karte</code>, auf Werte, die längst zu einem anderen Eintrag
+    gehören. Verlässt der Nutzer die Ansicht ganz, schreibt am Ende sogar eine
+    Komponente in einen <code>ref</code>, die es gar nicht mehr gibt.
+  </p>
+
+  <h3>Zwei Auslöser für abort()</h3>
+  <p>
+    Der erste Wächter ist ein <code>AbortController</code>. Jede Anfrage
+    bekommt ihren eigenen: ein <code>signal</code>, das an <code>fetch</code>
+    weitergereicht wird, und eine <code>abort()</code>-Methode, die genau
+    diesen einen Lauf beendet. Startet eine neue Anfrage, bricht sie zuerst die
+    alte ab. Verschwindet die Komponente (<code>onUnmounted</code>), bricht sie
+    die noch laufende Anfrage ebenfalls ab. Der dabei entstehende
+    <code>AbortError</code> ist kein echter Fehler, sondern die Bestätigung,
+    dass der Abbruch funktioniert hat, und wird stillschweigend ignoriert.
+  </p>
+
+  <div class="code">
+    <span class="titelzeile">useX.js, ein Wächter pro Anfrage</span>
+<pre><span class="k">let</span> controller = <span class="k">null</span>
+
+<span class="k">async function</span> <span class="f">laden</span>() {
+  controller?.<span class="f">abort</span>()               <span class="c">// alten Lauf sofort stoppen</span>
+  controller = <span class="k">new</span> <span class="f">AbortController</span>()
+  zustand.value = <span class="s">'laden'</span>
+
+  <span class="k">try</span> {
+    <span class="k">const</span> antwort = <span class="k">await</span> <span class="f">fetchKarte</span>({ signal: controller.signal })
+    karte.value = antwort.data
+    zustand.value = <span class="s">'fertig'</span>
+  } <span class="k">catch</span> (fehler) {
+    <span class="k">if</span> (fehler.name === <span class="s">'AbortError'</span>) <span class="k">return</span>  <span class="c">// gewollt, keine Meldung</span>
+    zustand.value = <span class="s">'fehler'</span>
+  }
+}
+
+<span class="f">onUnmounted</span>(() =&gt; controller?.<span class="f">abort</span>())</pre>
+  </div>
+
+  <p>
+    Der Abbruch ist proaktiv: er spart Netzwerk und verhindert die meisten
+    verirrten Antworten. Eine Garantie ist er trotzdem nicht. Netzwerke sind
+    unberechenbar, und in seltenen Fällen kommt eine eigentlich abgebrochene
+    Antwort dennoch an, kurz bevor der Abbruch greift. Ein einzelner Wächter
+    reicht darum nicht.
+  </p>
+
+  <h2><span class="nr">§4</span>Der zweite Wächter: das Wettrennen der Antworten</h2>
+  <p>
+    Stell dir zwei Klicks kurz hintereinander vor. Klick A trifft einen
+    Tresor-Eintrag: langsam, ungefähr <span class="tab">~600 ms</span>. Noch
+    bevor A zurück ist, klickt der Nutzer auf B, ein Cache-Treffer, ungefähr
+    <span class="tab">~1 ms</span>. B ist so schnell, dass es garantiert
+    zuerst antwortet.
+  </p>
+
+  <h3>Der Ablauf</h3>
+  <ol class="schritte">
+    <li>Klick auf A. <code>laden()</code> startet den ersten Lauf: <code>lauf</code> wird 1, <code>meine</code> merkt sich 1.</li>
+    <li>A ist ein Tresor-Treffer. Die Anfrage steht, der Netz-Pfad braucht seine <span class="tab">~600 ms</span>.</li>
+    <li>Noch bevor A zurück ist, klickt der Nutzer auf B. <code>laden()</code> startet erneut: <code>lauf</code> wird 2, <code>meine</code> merkt sich 2.</li>
+    <li>B ist ein Cache-Treffer und antwortet nach <span class="tab">~1 ms</span>. <code>meine</code> (2) ist gleich <code>lauf</code> (2), die Antwort zählt, die Karte zeigt B.</li>
+    <li>Kurz danach kommt endlich auch A an. <code>meine</code> (1) ist ungleich <code>lauf</code> (2), A gehört nicht mehr zum aktuellen Lauf.</li>
+    <li>Die Antwort von A wird verworfen. <code>zustand</code> und <code>karte</code> bleiben, was B gesetzt hat.</li>
+  </ol>
+
+  <div class="warnung">
+    <span class="titel">Die Falle</span>
+    <p>
+      Zwei Anfragen laufen gleichzeitig. Die langsame wurde zuerst gestartet,
+      die schnelle zuletzt. Ohne Wächter gewinnt nicht die Anfrage, die zuerst
+      gestartet wurde, und auch nicht die, die zur aktuellen Ansicht passt, 
+      sondern schlicht die, die als Letztes antwortet. Kommt die alte,
+      langsame Antwort nach der neuen, schnellen an, überschreibt sie eine
+      korrekte Karte mit veralteten Daten. Der Nutzer sieht dann etwas, das er
+      gar nicht mehr angefragt hat.
+    </p>
+  </div>
+
+  <h3>Die Lösung: ein Lauf-Zähler</h3>
+  <p>
+    Der zweite Wächter braucht kein Netzwerk und keinen zusätzlichen Request.
+    Er ist nur eine Zahl: ein Zähler, der bei jedem neuen Lauf um eins steigt,
+    und eine lokale Kopie, die sich jeder Lauf beim Start merkt.
+  </p>
+
+  <div class="code">
+    <span class="titelzeile">useX.js, der Wettlauf-Wächter</span>
+<pre><span class="k">let</span> lauf = <span class="s">0</span>                     <span class="c">// zählt jede neue Anfrage hoch</span>
+
+<span class="k">async function</span> <span class="f">laden</span>() {
+  <span class="k">const</span> meine = ++lauf              <span class="c">// meine eigene Nummer, gerade gezogen</span>
+  zustand.value = <span class="s">'laden'</span>
+
+  <span class="k">const</span> antwort = <span class="k">await</span> <span class="f">fetchKarte</span>()
+
+  <span class="k">if</span> (meine !== lauf) <span class="k">return</span>          <span class="c">// ein neuerer Lauf hat längst übernommen</span>
+
+  karte.value = antwort.data
+  zustand.value = <span class="s">'fertig'</span>
+}</pre>
+  </div>
+
+  <div class="tisch">
+    <span class="titel">Nach dem Fix</span>
+    <p>
+      Mit dem Lauf-Zähler ist die Reihenfolge der Antworten egal. Es zählt
+      nicht, wer zuerst zurückkommt, sondern wer noch zum aktuellen Lauf
+      gehört. Die Karte zeigt immer das Ergebnis des letzten Klicks, nie ein
+      Ergebnis, das schon überholt ist.
+    </p>
+  </div>
+
+  <p>
+    Der Lauf-Zähler und der <code>AbortController</code> lösen zusammen ein
+    und dasselbe Problem auf zwei Ebenen: veraltete Arbeit wird gestoppt, wo es
+    geht, und veraltete Antworten werden verworfen, wo Stoppen nicht gereicht
+    hat.
+  </p>
+
+  <h2><span class="nr">§5</span>Der Vertrag nach außen</h2>
+  <p>
+    Von außen sieht die composable trotzdem einfach aus. Sie gibt nur einen
+    kleinen, immer gleichen Vertrag zurück: <code>{ zustand, karte, meta, laden }</code>.
+    Vier Werte und eine Funktion, mehr braucht die Komponente nicht zu kennen.
+  </p>
+
+  <div class="merk">
+    <span class="titel">Der Vertrag der Composable</span>
+    <p>
+      Die Komponente kennt weder <code>fetch</code> noch
+      <code>AbortController</code> noch <code>lauf</code>. Sie kennt nur
+      <code>zustand</code>, <code>karte</code>, <code>meta</code> und die
+      Funktion <code>laden</code>, und rendert einfach, was der
+      <code>zustand</code> gerade sagt. Genau wie der Server aus Konzept 01 die
+      fremde Welt hinter einer Grenze versteckt, versteckt die composable die
+      ganze Wächter-Logik hinter sich.
+    </p>
+  </div>
+
+  <p class="leise">
+    Ein kleiner Stolperstein am Rande: <code>laden</code> taucht hier zweimal
+    auf, einmal als einer der vier Werte von <code>zustand</code>, einmal als
+    Name der Funktion, die einen neuen Lauf startet. Zwei verschiedene Rollen,
+    zufällig dasselbe Wort, kein Widerspruch im Code.
+  </p>
+
+  <p>
+    Diese drei Bausteine, der Zustand, die beiden Wächter, der Vertrag nach
+    außen, sind hier nur an einem generischen <code>useX</code> skizziert.
+    „Deine useArchiv baust du in Aufgabe 03."
+  </p>
+
+  <div class="frage">
+    <span class="titel">Die Frage des Tages</span>
+    <p>„Wenn zwei Antworten um die Wette laufen, welche darf am Ende wirklich gewinnen?"</p>
+  </div>
+  <p>
+    Trage diese Frage durch Aufgabe 03. Klick in deinem Test schnell zweimal
+    hintereinander und frag nicht, welche Antwort zuerst zurückkommt, sondern
+    welche Anfrage gerade noch gültig ist. <code>zustand</code> zeigt vier
+    Gesichter, die Wächter sorgen dafür, dass zu jedem Zeitpunkt nur eines
+    davon stimmt.
+  </p>
+
+  <div class="merk">
+    <span class="titel">Mitnehmen</span>
+    <p>
+      Eine composable modelliert den Zustand einer Anfrage sauber, mit vier
+      benannten Werten statt einem einsamen Boolean. Während <code>zustand</code>
+      auf <code>laden</code> steht, zeigt die Komponente einen Skeleton statt
+      einer leeren Seite. Ein <code>AbortController</code> stoppt veraltete
+      Anfragen, ein monotoner Lauf-Zähler verwirft veraltete Antworten, die
+      trotzdem noch ankommen. Nach außen zeigt die composable nur einen
+      kleinen Vertrag, und die Komponente rendert, was er gerade sagt.
+    </p>
+  </div>
+
+  <nav class="fuss">
+    <a href="04-graceful-degradation.html">&larr; Zurück</a>
+    <a href="06-liefertag-ritus.html">Weiter: Der Liefertag-Ritus &rarr;</a>
+  </nav>
+</main>
+</body>
+</html>

@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>02 · Transport &amp; View-Model · Das Archiv</title>
+<link rel="stylesheet" href="_archiv.css" />
+</head>
+<body>
+<main class="seite">
+  <p class="marke">Das Archiv · Konzept 02</p>
+  <header class="kopf">
+    <h1>Transport &amp; View-Model</h1>
+    <p class="dachzeile">
+      Warum schickt dir eine fremde API fünfzig Felder zurück, wenn deine
+      Vue-Komponente am Ende nur sieben davon braucht? Und was passiert mit
+      deinem Frontend, wenn du diesen Unterschied ignorierst?
+    </p>
+  </header>
+
+  <p>
+    Der Tresor aus Konzept 01 gibt kein Blatt heraus, das schon nach deinen
+    Wünschen sortiert ist. Er gibt heraus, was er selbst für richtig hält: ein
+    Formular, gewachsen aus Jahren eigener Verwaltung, mit Feldern für Rechte,
+    Maße, interne Kennungen und ein Dutzend Bildvarianten. Diese Form heißt
+    <strong>Transportform</strong>. Sie ist sinnvoll aufgebaut, nur eben nicht für
+    dich gemeint.
+  </p>
+  <p>
+    Der Lesetisch aus Konzept 01 macht daraus die <strong>Katalogkarte</strong>.
+    Sie ist genau das <code>data</code>-Feld aus dem Vertrag der Grenze:
+    <code>{ source, ms, ttl, data }</code>. Um dieses eine Feld geht es in
+    diesem Konzept: wie es entsteht, und warum diese Übersetzung der
+    eigentliche Kern der Grenze ist, nicht nur eine Formsache.
+  </p>
+
+  <div class="fluss" role="img" aria-label="Das rohe Blatt aus dem Tresor wird an der Grenze zu einer kleinen Katalogkarte normalisiert">
+    <div class="knoten tresor-k"><span class="rolle">Tresor</span><span class="name">Rohes Blatt · 40-50 Felder</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten"><span class="rolle">Grenze</span><span class="name">toKatalogkarte()</span></div>
+    <div class="pfeil" aria-hidden="true">→</div>
+    <div class="knoten tisch-k"><span class="rolle">Tisch</span><span class="name">Katalogkarte · 7 Felder</span></div>
+  </div>
+
+  <p>
+    Bevor du deine eigene Normalisierung baust (Aufgabe 02), lohnt sich ein
+    genauer Blick auf beide Seiten dieser Übersetzung: was der Tresor
+    tatsächlich liefert, und was die Karte am Ende wirklich braucht.
+  </p>
+
+  <h2><span class="nr">§1</span>Die Transportform: geformt für den Tresor, nicht für dich</h2>
+  <p>
+    Jede der drei erlaubten APIs antwortet mit einer Form, die zuerst für sie
+    selbst funktioniert: für die eigene Datenbank, die eigene
+    Versionsgeschichte, die eigene Vollständigkeit. Ein einzelnes Objekt kommt
+    dabei oft mit vierzig bis fünfzig Feldern zurück, viele davon
+    <code>null</code>, manche doppelt. Das ist kein Fehler der API. Es ist
+    einfach nicht deine Form.
+  </p>
+  <p>Drei Eigenschaften wiederholen sich bei so gut wie jeder Transportform:</p>
+  <ul>
+    <li>Deutlich mehr Felder, als deine Oberfläche jemals anzeigt.</li>
+    <li>Schlüssel fast immer englisch und nach der Logik der Quelle benannt, nicht nach deiner Domäne.</li>
+    <li>Lücken: manche Objekte liefern ein Feld, andere lassen es leer oder ganz weg.</li>
+  </ul>
+
+  <div class="warnung">
+    <span class="titel">Falle</span>
+    <p>
+      Wer diese Transportform ungefiltert in Vue-Komponenten weiterreicht,
+      verschiebt die Aufräumarbeit nur nach vorne, jede Komponente, die
+      dieselbe Karte anzeigt, prüft dann selbst erneut, welches Feld diesmal
+      fehlt oder wie es diesmal heißt.
+    </p>
+  </div>
+
+  <h2><span class="nr">§2</span>Die Normalisierung: eine Funktion an der Grenze</h2>
+  <p>
+    Genau eine Funktion räumt auf. Sie sitzt am Lesetisch, nimmt das rohe
+    Blatt entgegen und gibt die Katalogkarte heraus, konzeptionell
+    <code>toKatalogkarte(rohObjekt)</code>. Alles, was diese Funktion nicht in
+    die Karte übernimmt, bleibt hinter der Grenze zurück.
+  </p>
+  <p>
+    Zwei Entscheidungen treffen dabei den Unterschied zwischen einer
+    brauchbaren und einer bloß kopierten Karte. Erstens: Felder heißen nach
+    ihrer <strong>Bedeutung</strong>, nicht nach ihrem Ursprung. Zweitens:
+    jedes Feld bekommt einen <strong>sicheren Rückfallwert</strong>. Ein
+    Rückfallwert ist dabei nicht automatisch eine leere Zeichenkette.
+    „Ohne Titel" sagt etwas anderes als <code>""</code>, und <code>""</code>
+    sagt etwas anderes als <code>null</code>. Welcher der drei am Ende auf der
+    Karte steht, entscheidest du an der Grenze, einmal, nicht in jeder
+    Komponente neu.
+  </p>
+
+  <div class="code">
+    <span class="titelzeile">Rohes Blatt, eine erfundene Bibliotheks-API, nur zur Veranschaulichung</span>
+<pre>{
+  bookTitleFull: <span class="s">"Der Steppenwolf : Roman"</span>,
+  author_display_name: <span class="s">"Hermann Hesse"</span>,
+  publication_yr: <span class="s">1927</span>,
+  shelf_location_code: <span class="s">"B-14-C"</span>,
+  digitization_status: <span class="k">null</span>,
+  <span class="c">// ... rund vierzig weitere Felder</span>
+}</pre>
+  </div>
+
+  <p>Am Lesetisch wird daraus, mit einem Rückfallwert für jedes Feld:</p>
+
+  <div class="code">
+    <span class="titelzeile">Die Normalisierung, eine Funktion, konzeptionell</span>
+<pre><span class="k">function</span> <span class="f">toKatalogkarte</span>(rohObjekt) {
+  <span class="k">return</span> {
+    titel: rohObjekt.bookTitleFull ?? <span class="s">"Ohne Titel"</span>,
+    autor: rohObjekt.author_display_name ?? <span class="s">"Unbekannt"</span>,
+    jahr: rohObjekt.publication_yr ?? <span class="k">null</span>,
+  }
+}</pre>
+  </div>
+
+  <table class="tabelle">
+    <thead>
+      <tr><th>Rohes Feld (Tresor)</th><th>Katalogkarte-Feld (Tisch)</th><th>Rückfallwert</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>bookTitleFull</code></td>
+        <td><code>titel</code></td>
+        <td>„Ohne Titel"</td>
+      </tr>
+      <tr>
+        <td><code>author_display_name</code></td>
+        <td><code>autor</code></td>
+        <td>„Unbekannt"</td>
+      </tr>
+      <tr>
+        <td><code>publication_yr</code></td>
+        <td><code>jahr</code></td>
+        <td><code>null</code></td>
+      </tr>
+      <tr>
+        <td class="leise"><code>shelf_location_code</code>, <code>digitization_status</code>, gut 40 weitere</td>
+        <td class="leise">bleibt hinter der Grenze</td>
+        <td class="leise">entfällt</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="merk">
+    <span class="titel">Kernsatz</span>
+    <p>
+      Eine Katalogkarte ist kein verkleinertes Abbild der Transportform. Sie
+      ist eine eigene, neue Form, die nur die Felder trägt, die deine
+      Oberfläche braucht, benannt nach Bedeutung statt nach Herkunft, nie mit
+      einer Lücke, die im Vue-Template zu einer eigenen Prüfung wird.
+    </p>
+  </div>
+
+  <h2><span class="nr">§3</span>Drei APIs, ein Muster</h2>
+  <p>
+    Die drei erlaubten APIs unterscheiden sich in praktisch jedem Detail ihrer
+    Transportform: andere Feldnamen, andere Verschachtelung, andere Lücken.
+    Das Muster der Normalisierung bleibt trotzdem gleich. Genau das macht es
+    zu einem Muster und nicht zu einer Speziallösung für eine einzelne API.
+    Das Art Institute of Chicago passt dabei thematisch besonders gut zu
+    dieser Konzeptreihe: ein Archiv, das seine eigene Transportform hat.
+  </p>
+
+  <ul class="pillen">
+    <li class="pill">Met Museum</li>
+    <li class="pill">TheMealDB</li>
+    <li class="pill">Art Institute of Chicago</li>
+  </ul>
+
+  <table class="tabelle">
+    <thead>
+      <tr><th>API</th><th>Endpoint</th><th>Katalogkarte-Sketch</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Met Museum<br /><span class="leise">Kunst</span></td>
+        <td><code>objects/{id}</code></td>
+        <td><code>id</code>, <code>titel</code>, <code>kuenstler</code>, <code>jahr</code>, <code>medium</code>, <code>abteilung</code>, <code>bild</code></td>
+      </tr>
+      <tr>
+        <td>TheMealDB<br /><span class="leise">Rezepte</span></td>
+        <td><code>lookup.php?i={id}</code></td>
+        <td><code>id</code>, <code>titel</code>, <code>kategorie</code>, <code>region</code>, <code>anleitung</code>, <code>bild</code></td>
+      </tr>
+      <tr>
+        <td>Art Institute of Chicago<br /><span class="leise">Kunst / Archiv</span></td>
+        <td><code>artworks/{id}?fields=…</code></td>
+        <td><code>id</code>, <code>titel</code>, <code>kuenstler</code>, <code>jahr</code>, <code>medium</code>, <code>abteilung</code>, <code>bild</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="leise">
+    Rohe Feldnamen zur Orientierung: TheMealDB liefert <code>strMeal</code>,
+    <code>strCategory</code>, <code>strArea</code>, <code>strInstructions</code>,
+    <code>strMealThumb</code>. Das Art Institute of Chicago liefert seine
+    sieben Rohfelder nur, wenn du sie gezielt über den Parameter
+    <code>fields</code> anfragst:
+  </p>
+
+  <div class="code">
+    <span class="titelzeile">Art Institute of Chicago, Beispiel-Endpoint</span>
+<pre>GET /artworks/{id}?fields=id,title,artist_display,date_display,medium_display,image_id,department_title</pre>
+  </div>
+
+  <div class="tresor">
+    <span class="titel">Aus dem Tresor</span>
+    <p>
+      „Bild" heißt bei jeder API anders, und manchmal ist es gar kein
+      fertiges Bild. Das Art Institute of Chicago liefert nur eine
+      <code>image_id</code>. Die Bild-URL baust du selbst zusammen, nach dem
+      Muster <code>https://www.artic.edu/iiif/2/{image_id}/full/843,/0/default.jpg</code>.
+      Nicht jedes Kartenfeld ist ein einfaches Umbenennen, manche sind eine
+      kleine Berechnung.
+    </p>
+  </div>
+
+  <div class="tisch">
+    <span class="titel">Auf dem Tisch</span>
+    <p>
+      Auf der Katalogkarte heißt es immer <code>bild</code>. Deine
+      Vue-Komponente kennt nur <code>karte.bild</code>, nie
+      <code>primaryImage</code>, nie <code>strMealThumb</code>, nie
+      <code>image_id</code>. Welche der drei APIs es ist, sieht die
+      Oberfläche nicht mehr an.
+    </p>
+  </div>
+
+  <h3>Bonus: PokéAPI</h3>
+  <p>
+    Wer lieber mit <code>pokemon/{name}</code> arbeitet, findet dort dieselbe
+    Aufgabe in kleinerem Rahmen. Einem schlanken Kartenformat stehen auch hier
+    deutlich mehr verschachtelte Rohfelder gegenüber.
+  </p>
+  <p class="leise">Deine eigene Normalisierung baust du in Aufgabe 02.</p>
+
+  <h2><span class="nr">§4</span>Nie die Transportform durchlassen</h2>
+  <p>
+    Konzept 01 endete mit einer Frage: „Wer besitzt diese Grenze, und was
+    überquert sie?" Für die Katalogkarte ist die Antwort eindeutig. Die
+    Katalogkarte überquert. Die Transportform nie.
+  </p>
+  <p>
+    Das gilt unabhängig davon, wie klein ein einzelnes rohes Feld aussieht.
+    Auch eine interne ID, ein Rechte-Vermerk oder ein zweites, unbenutztes
+    Bildformat gehören zur Transportform, und damit hinter die Grenze, nicht
+    in die Antwort an den Browser.
+  </p>
+
+  <div class="fluss" role="img" aria-label="Der Browser bekommt immer die Katalogkarte, nie die rohe Transportform">
+    <div class="knoten tisch-k"><span class="rolle">Browser bekommt</span><span class="name">Katalogkarte · 7 Felder</span></div>
+    <div class="pfeil" aria-hidden="true">✕</div>
+    <div class="knoten tresor-k"><span class="rolle">Browser bekommt nie</span><span class="name">Transportform · 40-50 Felder</span></div>
+  </div>
+
+  <div class="frage">
+    <span class="titel">Die Frage des Tages</span>
+    <p>„Welches Feld auf meiner Karte würde zuerst kaputtgehen, wenn die fremde API morgen ihre Rohform ändert?"</p>
+  </div>
+
+  <p>Für Aufgabe 02 brauchst du daraus keine fertige Lösung, sondern einen Ablauf:</p>
+  <ol class="schritte">
+    <li>Wähle eine der drei APIs und hole dir eine einzelne Beispiel-Antwort.</li>
+    <li>Zähle die Felder der Transportform und markiere die fünf bis sieben, die deine Oberfläche wirklich braucht.</li>
+    <li>Benenne jedes markierte Feld nach seiner Bedeutung, nicht nach dem Namen aus der Transportform.</li>
+    <li>Lege für jedes Feld einen sicheren Rückfallwert fest, für den Fall, dass die API es leer lässt.</li>
+    <li>Prüfe zum Schluss, ob irgendwo noch ein rohes Feld deine Normalisierung verlässt. Wenn ja, ist die Grenze noch nicht dicht.</li>
+  </ol>
+
+  <div class="merk">
+    <span class="titel">Mitnehmen</span>
+    <p>
+      Die Transportform gehört dem Tresor. Die Katalogkarte gehört dir.
+      Dazwischen steht eine einzige Funktion, die nach Bedeutung benennt, auf
+      fünf bis sieben Felder kürzt und für jede Lücke einen Rückfallwert
+      bereithält. Was diese Funktion nicht in die Karte übernimmt, sieht der
+      Browser nie, ganz gleich, welche der drei APIs du gewählt hast.
+    </p>
+  </div>
+
+  <nav class="fuss">
+    <a href="01-die-server-grenze.html">&larr; Zurück</a>
+    <a href="03-cache-aside-ttl.html">Weiter: Cache-aside &amp; TTL &rarr;</a>
+  </nav>
+</main>
+</body>
+</html>
