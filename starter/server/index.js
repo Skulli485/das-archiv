@@ -20,7 +20,7 @@ async function holeAusQuelle(id) {
 
 function toKarte(roh) {
   return {
-    id: roh.objectID,
+    id: roh.objectID ?? id,
     titel: roh.title || "Ohne Titel",
     kuenstler: roh.artistDisplayName || "Unbekannt",
     jahr: roh.objectDate || "",
@@ -89,14 +89,16 @@ async function cacheTTL(key) {
 
 // --- Cache-aside: karte(id) ---
 
-async function karte(id) {
+async function karte(id, frisch = false) {
   const key = `archiv:objekt:${id}`;
 
-  // 1. Cache-Treffer?
-  const getroffen = await gedacht(key);
-  if (getroffen) {
-    const ttl = await cacheTTL(key);
-    return { source: "cache", ms: 0.1, ttl, data: getroffen };
+  // 1. Cache-Treffer? (außer bei ?frisch=1)
+  if (!frisch) {
+    const getroffen = await gedacht(key);
+    if (getroffen) {
+      const ttl = await cacheTTL(key);
+      return { source: "cache", ms: 0.1, ttl, data: getroffen };
+    }
   }
 
   // 2. Nein -> frisch holen
@@ -108,7 +110,7 @@ async function karte(id) {
   // 3. Fürs nächste Mal merken
   await merke(key, data);
 
-  return { source: "netz", ms, ttl: TTL, data };
+  return { source: frisch ? "frisch" : "netz", ms, ttl: TTL, data };
 }
 
 // --- Hilfsfunktion ---
@@ -142,11 +144,48 @@ verbindeRedis().then(() => {
         return json({ ids: GALERIE_IDS });
       }
 
-      // Einzelobjekt: /api/objekt/:id
+      // Einzelobjekt: /api/objekt/:id (mit optionalem ?frisch=1 für Cache-Bypass)
       const m = pathname.match(/^\/api\/objekt\/(\d+)$/);
       if (m) {
         try {
-          return json(await karte(Number(m[1])));
+          const url = new URL(req.url);
+          const frisch = url.searchParams.get("frisch") === "1";
+          return json(await karte(Number(m[1]), frisch));
+        } catch (e) {
+          return json({ error: e.message }, 502);
+        }
+      }
+
+      // Suche (Capstone): /api/suche?q=...
+      const s = pathname.match(/^\/api\/suche$/);
+      if (s) {
+        const url = new URL(req.url);
+        const q = (url.searchParams.get("q") || "").trim();
+        if (!q) return json({ query: "", ergebnisse: [] }, 200);
+        try {
+          const res = await fetch(
+            `https://collectionapi.metmuseum.org/public/collection/v1/search?q=${encodeURIComponent(q)}&hasImages=true`
+          );
+          if (!res.ok) throw new Error(`Met Search ${res.status}`);
+          const body = await res.json();
+          const ids = (body.objectIDs || []).slice(0, 12);
+          // Hole kurze Karten für die ersten Treffer
+          const ergebnisse = await Promise.all(
+            ids.map(async (id) => {
+              try {
+                const roh = await holeAusQuelle(id);
+                return {
+                  id: roh.objectID ?? id,
+                  titel: roh.title || "Ohne Titel",
+                  kuenstler: roh.artistDisplayName || "Unbekannt",
+                  bild: roh.primaryImageSmall || "",
+                };
+              } catch {
+                return { id, titel: "Nicht gefunden", kuenstler: "—", bild: "" };
+              }
+            })
+          );
+          return json({ query: q, ergebnisse });
         } catch (e) {
           return json({ error: e.message }, 502);
         }

@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import GalerieRaster from './components/GalerieRaster.vue'
 import KartenDetail from './components/KartenDetail.vue'
+import SuchForm from './components/SuchForm.vue'
 
 const gewaehlt = ref(null)
 
@@ -16,10 +17,11 @@ function waehle(id) {
       <p class="augenbraue">Das Archiv</p>
       <h1>Der Leseraum</h1>
       <p class="unterzeile">
-        Eine Grenze, ein Gedächtnis. Wähle ein Objekt aus der Galerie.
+        Eine Grenze, ein Gedächtnis. Wähle ein Objekt aus der Galerie oder suche im Met Museum.
       </p>
     </header>
 
+    <SuchForm @waehle="waehle" />
     <GalerieRaster @waehle="waehle" />
     <KartenDetail :id="gewaehlt" />
   </main>
