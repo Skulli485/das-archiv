@@ -1,9 +1,13 @@
 <script setup>
-import { useArchiv } from './composables/useArchiv.js'
+import { ref } from 'vue'
+import GalerieRaster from './components/GalerieRaster.vue'
+import KartenDetail from './components/KartenDetail.vue'
 
-const GALERIE_IDS = [436535, 436532, 436530, 436528, 436524, 436521, 436518, 436516]
+const gewaehlt = ref(null)
 
-const { zustand, karte, meta, laden } = useArchiv()
+function waehle(id) {
+  gewaehlt.value = id
+}
 </script>
 
 <template>
@@ -11,20 +15,13 @@ const { zustand, karte, meta, laden } = useArchiv()
     <header class="kopf">
       <p class="augenbraue">Das Archiv</p>
       <h1>Der Leseraum</h1>
+      <p class="unterzeile">
+        Eine Grenze, ein Gedächtnis. Wähle ein Objekt aus der Galerie.
+      </p>
     </header>
 
-    <nav class="testliste">
-      <button v-for="id in GALERIE_IDS" :key="id" @click="laden(id)">{{ id }}</button>
-    </nav>
-
-    <p v-if="zustand === 'idle'">Wähle ein Objekt.</p>
-    <p v-else-if="zustand === 'laden'">Lädt …</p>
-    <article v-else-if="zustand === 'fertig' && karte">
-      <h2>{{ karte.titel }}</h2>
-      <p>{{ karte.kuenstler }} · {{ karte.jahr }}</p>
-      <p class="laufzettel">{{ meta.source }} · {{ meta.ms }} ms</p>
-    </article>
-    <p v-else-if="zustand === 'fehler'">Diese Karte konnte nicht geladen werden.</p>
+    <GalerieRaster @waehle="waehle" />
+    <KartenDetail :id="gewaehlt" />
   </main>
 </template>
 
@@ -50,15 +47,10 @@ const { zustand, karte, meta, laden } = useArchiv()
   margin: 0 0 0.75rem;
   color: var(--tinte);
 }
-.testliste {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0 0 1.5rem;
-}
-.laufzettel {
+.unterzeile {
   color: var(--tinte-weich);
-  font-family: var(--mono);
-  font-size: 0.85rem;
+  max-width: 56ch;
+  line-height: 1.6;
+  margin: 0 0 2rem;
 }
 </style>

@@ -8,7 +8,7 @@ import { ref, onUnmounted } from 'vue'
 export function useArchiv() {
   const zustand = ref('idle')
   const karte = ref(null)
-  const meta = ref(null) // { source, ms }
+  const meta = ref(null) // { source, ms, ttl }
   let controller = null
   let lauf = 0
 
@@ -23,7 +23,7 @@ export function useArchiv() {
       const body = await res.json()
       if (meine !== lauf) return // neuere Anfrage hat übernommen
       karte.value = body.data
-      meta.value = { source: body.source, ms: body.ms }
+      meta.value = { source: body.source, ms: body.ms, ttl: body.ttl }
       zustand.value = 'fertig'
     } catch (e) {
       if (e.name === 'AbortError' || meine !== lauf) return
@@ -31,9 +31,17 @@ export function useArchiv() {
     }
   }
 
+  function zurueck() {
+    controller?.abort()
+    lauf++
+    zustand.value = 'idle'
+    karte.value = null
+    meta.value = null
+  }
+
   onUnmounted(() => {
     controller?.abort()
   })
 
-  return { zustand, karte, meta, laden }
+  return { zustand, karte, meta, laden, zurueck }
 }
