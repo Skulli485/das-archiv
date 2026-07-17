@@ -26,6 +26,7 @@ function onKey(e, id) {
 
 <template>
   <section class="suche" aria-label="Suche">
+    <p class="saaltitel">Katalog-Recherche</p>
     <input
       v-model="input"
       @input="onInput"
@@ -69,17 +70,25 @@ function onKey(e, id) {
 
 <style scoped>
 .suche {
-  margin: 0 0 2rem;
+  margin: 0 0 2.5rem;
   border: 1px solid var(--linie);
-  border-radius: 0.7rem;
+  border-top: 3px solid var(--messing);
+  border-radius: 0.3rem;
   padding: 1rem;
   background: var(--papier-tief);
+}
+.saaltitel {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tinte-weich);
+  margin: 0 0 0.6rem;
 }
 .such-input {
   width: 100%;
   padding: 0.6rem 0.8rem;
   border: 1px solid var(--linie);
-  border-radius: 0.5rem;
+  border-radius: 0.3rem;
   font-size: 1rem;
   background: var(--papier);
   color: var(--tinte);
@@ -109,7 +118,7 @@ function onKey(e, id) {
   width: 100%;
   padding: 0.5rem;
   border: 1px solid var(--linie);
-  border-radius: 0.5rem;
+  border-radius: 0.3rem;
   background: var(--papier);
   cursor: pointer;
   text-align: left;
@@ -123,7 +132,7 @@ function onKey(e, id) {
   width: 60px;
   height: 60px;
   object-fit: cover;
-  border-radius: 0.3rem;
+  border: 1px solid var(--linie);
   flex: none;
 }
 .treffer-text {
@@ -133,7 +142,8 @@ function onKey(e, id) {
   min-width: 0;
 }
 .treffer-titel {
-  font-weight: 600;
+  font-family: var(--serif);
+  font-style: italic;
   font-size: 0.92rem;
   overflow: hidden;
   text-overflow: ellipsis;

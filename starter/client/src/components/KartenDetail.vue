@@ -31,27 +31,32 @@ watch(() => props.id, (neu) => {
 
     <!-- fertig -->
     <Transition name="auf" mode="out-in">
-      <article v-if="zustand === 'fertig' && karte" :key="karte.id" class="karte">
-        <img
-          v-if="karte.bild"
-          :src="karte.bild"
-          :alt="`${karte.titel} – ${karte.kuenstler}`"
-          loading="lazy"
-          width="400"
-          height="300"
-          class="bild"
-        />
-        <div v-else class="bild-platzhalter">Kein Bild</div>
-        <div class="kopf">
-          <h2>{{ karte.titel }}</h2>
-          <p class="kuenstler">{{ karte.kuenstler }}</p>
+      <article v-if="zustand === 'fertig' && karte" :key="karte.id" class="exponat">
+        <div class="rahmen">
+          <div class="passepartout">
+            <img
+              v-if="karte.bild"
+              :src="karte.bild"
+              :alt="`${karte.titel} – ${karte.kuenstler}`"
+              loading="lazy"
+              width="400"
+              height="300"
+              class="bild"
+            />
+            <div v-else class="bild-platzhalter">Kein Bild</div>
+          </div>
         </div>
-        <dl class="felder">
-          <div><dt>Jahr</dt><dd>{{ karte.jahr }}</dd></div>
-          <div><dt>Material</dt><dd>{{ karte.material }}</dd></div>
-          <div><dt>Abteilung</dt><dd>{{ karte.abteilung }}</dd></div>
-        </dl>
-        <LaufzettelBadge :meta="meta" />
+
+        <div class="plakette">
+          <h2>{{ karte.titel }}</h2>
+          <p class="kuenstler">{{ karte.kuenstler }}, {{ karte.jahr || 'undatiert' }}</p>
+          <dl class="felder">
+            <div><dt>Material</dt><dd>{{ karte.material }}</dd></div>
+            <div><dt>Abteilung</dt><dd>{{ karte.abteilung }}</dd></div>
+            <div><dt>Inv.-Nr.</dt><dd>{{ karte.id }}</dd></div>
+          </dl>
+          <LaufzettelBadge :meta="meta" />
+        </div>
       </article>
     </Transition>
 
@@ -96,18 +101,35 @@ watch(() => props.id, (neu) => {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 0.9; }
 }
-/* Karte */
-.karte {
+/* Exponat */
+.exponat {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 1.1rem;
+}
+.rahmen {
+  padding: 0.9rem;
+  background: linear-gradient(155deg, var(--messing-hell), var(--messing) 55%, #8a601f);
+  border-radius: 0.3rem;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.25) inset,
+    0 12px 26px -12px rgba(0, 0, 0, 0.55);
+  align-self: center;
+  max-width: 460px;
+  width: 100%;
+}
+.passepartout {
+  background: var(--papier);
+  border: 1px solid var(--linie);
+  padding: 1rem;
+  display: grid;
+  place-items: center;
 }
 .bild {
   width: 100%;
   max-width: 400px;
   height: auto;
-  border-radius: 0.5rem;
-  border: 1px solid var(--linie);
+  display: block;
 }
 .bild-platzhalter {
   width: 100%;
@@ -116,40 +138,49 @@ watch(() => props.id, (neu) => {
   display: grid;
   place-items: center;
   background: var(--papier-tief);
-  border-radius: 0.5rem;
   color: var(--tinte-weich);
   font-size: 0.9rem;
 }
-.kopf h2 {
+/* Plakette (Museums-Label) */
+.plakette {
+  align-self: center;
+  max-width: 460px;
+  width: 100%;
+  background: var(--papier-tief);
+  border: 1px solid var(--linie);
+  border-left: 3px solid var(--messing);
+  border-radius: 0.3rem;
+  padding: 1rem 1.2rem;
+}
+.plakette h2 {
   font-family: var(--serif);
-  font-size: 1.4rem;
+  font-style: italic;
+  font-size: 1.35rem;
   margin: 0;
+  color: var(--tinte);
 }
 .kuenstler {
   color: var(--tinte-weich);
-  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin: 0.3rem 0 0.9rem;
 }
 .felder {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 0.5rem;
-  margin: 0;
-}
-.felder div {
-  border: 1px solid var(--linie);
-  border-radius: 0.4rem;
-  padding: 0.4rem 0.6rem;
-  background: var(--papier-tief);
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.5rem 0.8rem;
+  margin: 0 0 0.9rem;
 }
 .felder dt {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--tinte-weich);
 }
 .felder dd {
-  margin: 0.15rem 0 0;
-  font-size: 0.92rem;
+  margin: 0.1rem 0 0;
+  font-size: 0.9rem;
 }
 .fehler {
   color: var(--messing);

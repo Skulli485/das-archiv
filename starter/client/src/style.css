@@ -1,12 +1,15 @@
-/* Das Archiv · Leseraum-Grundton. Warmes Papier, dunkle Tinte. Offline, ohne Netz-Fonts. */
+/* Das Archiv · Museums-Saal. Marmor, Wandfarbe, Goldrahmen. Offline, ohne Netz-Fonts. */
 :root {
-  --papier: #f4efe6;
-  --papier-tief: #ece4d5;
-  --tinte: #1c140c;
-  --tinte-weich: #5b4a37;
-  --linie: #d9ccb4;
-  --messing: #b8863b; /* netz / Tresor */
-  --patina: #3f7d5e;  /* cache / Tisch */
+  --papier: #f1ede3;       /* Marmorboden */
+  --papier-tief: #e6e0d1;  /* Marmor im Schatten / Vitrine */
+  --wand: #3a1420;         /* Museumswand, Bordeaux */
+  --wand-tief: #2a0d17;
+  --tinte: #201a12;
+  --tinte-weich: #5c4f3d;
+  --linie: #d6cbb2;
+  --messing: #b8863b;      /* Goldrahmen / netz / Tresor */
+  --messing-hell: #d9ab5c;
+  --patina: #3f7d5e;       /* Bronze-Patina / cache / Tisch */
 
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -19,7 +22,10 @@
 
 body {
   margin: 0;
-  background: var(--papier);
+  background:
+    radial-gradient(120% 60% at 15% 0%, color-mix(in srgb, var(--messing) 6%, transparent), transparent 60%),
+    radial-gradient(100% 50% at 90% 20%, color-mix(in srgb, var(--tinte-weich) 6%, transparent), transparent 60%),
+    var(--papier);
   color: var(--tinte);
   font: 16px/1.6 var(--sans);
   -webkit-font-smoothing: antialiased;

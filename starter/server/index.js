@@ -12,6 +12,19 @@ const MET_BASE = "https://collectionapi.metmuseum.org/public/collection/v1/objec
 // Kuratierte Galerie: geprüfte Met-Objekt-IDs
 const GALERIE_IDS = [436535, 436532, 436530, 436528, 436524, 436521, 436518, 436516];
 
+// Vorschau fürs Saal-Raster: fest kuratiert, damit sie nie den Objekt-Cache
+// berührt. So bleibt der Miss-dann-Hit-Beweis auf /api/objekt/:id unverändert.
+const GALERIE_VORSCHAU = [
+  { id: 436535, titel: "Wheat Field with Cypresses", kuenstler: "Vincent van Gogh", bild: "https://images.metmuseum.org/CRDImages/ep/web-large/DP-42549-001.jpg" },
+  { id: 436532, titel: "Self-Portrait with a Straw Hat", kuenstler: "Vincent van Gogh", bild: "https://images.metmuseum.org/CRDImages/ep/web-large/DT1502_cropped2.jpg" },
+  { id: 436530, titel: "Oleanders", kuenstler: "Vincent van Gogh", bild: "https://images.metmuseum.org/CRDImages/ep/web-large/DT1494.jpg" },
+  { id: 436528, titel: "Irises", kuenstler: "Vincent van Gogh", bild: "https://images.metmuseum.org/CRDImages/ep/web-large/DP346474.jpg" },
+  { id: 436524, titel: "Sunflowers", kuenstler: "Vincent van Gogh", bild: "https://images.metmuseum.org/CRDImages/ep/web-large/DP-41223-001.jpg" },
+  { id: 436521, titel: "Portrait of a Man", kuenstler: "Hugo van der Goes", bild: "https://images.metmuseum.org/CRDImages/ep/web-large/DP347299.jpg" },
+  { id: 436518, titel: "Madonna and Child with Saints", kuenstler: "Girolamo dai Libri", bild: "https://images.metmuseum.org/CRDImages/ep/web-large/DT2956.jpg" },
+  { id: 436516, titel: "The Triumph of Fame", kuenstler: "Giovanni di ser Giovanni Guidi", bild: "https://images.metmuseum.org/CRDImages/ep/web-large/DP164870.jpg" },
+];
+
 async function holeAusQuelle(id) {
   const res = await fetch(`${MET_BASE}/${id}`);
   if (!res.ok) throw new Error(`Met API ${res.status}`);
@@ -142,6 +155,12 @@ verbindeRedis().then(() => {
       // Galerie: kuratierte Liste
       if (pathname === "/api/galerie") {
         return json({ ids: GALERIE_IDS });
+      }
+
+      // Saal-Vorschau: Titel/Künstler/Bild fürs Raster, ohne den Objekt-Cache
+      // zu berühren (kein Miss/Hit hier, das bleibt /api/objekt/:id vorbehalten)
+      if (pathname === "/api/galerie/vorschau") {
+        return json({ vorschau: GALERIE_VORSCHAU });
       }
 
       // Einzelobjekt: /api/objekt/:id (mit optionalem ?frisch=1 für Cache-Bypass)
