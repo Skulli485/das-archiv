@@ -1,16 +1,9 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { useArchiv } from './composables/useArchiv.js'
 
-const erreichbar = ref(null) // null | true | false
+const GALERIE_IDS = [436535, 436532, 436530, 436528, 436524, 436521, 436518, 436516]
 
-onMounted(async () => {
-  try {
-    const res = await fetch('/api/health')
-    erreichbar.value = res.ok
-  } catch {
-    erreichbar.value = false
-  }
-})
+const { zustand, karte, meta, laden } = useArchiv()
 </script>
 
 <template>
@@ -20,9 +13,18 @@ onMounted(async () => {
       <h1>Der Leseraum</h1>
     </header>
 
-    <p v-if="erreichbar === null">Prüfe die Grenze …</p>
-    <p v-else-if="erreichbar">Die Grenze ist erreichbar.</p>
-    <p v-else>Die Grenze ist nicht erreichbar.</p>
+    <nav class="testliste">
+      <button v-for="id in GALERIE_IDS" :key="id" @click="laden(id)">{{ id }}</button>
+    </nav>
+
+    <p v-if="zustand === 'idle'">Wähle ein Objekt.</p>
+    <p v-else-if="zustand === 'laden'">Lädt …</p>
+    <article v-else-if="zustand === 'fertig' && karte">
+      <h2>{{ karte.titel }}</h2>
+      <p>{{ karte.kuenstler }} · {{ karte.jahr }}</p>
+      <p class="laufzettel">{{ meta.source }} · {{ meta.ms }} ms</p>
+    </article>
+    <p v-else-if="zustand === 'fehler'">Diese Karte konnte nicht geladen werden.</p>
   </main>
 </template>
 
@@ -47,5 +49,16 @@ onMounted(async () => {
   letter-spacing: -0.01em;
   margin: 0 0 0.75rem;
   color: var(--tinte);
+}
+.testliste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+}
+.laufzettel {
+  color: var(--tinte-weich);
+  font-family: var(--mono);
+  font-size: 0.85rem;
 }
 </style>
