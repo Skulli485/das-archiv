@@ -1,7 +1,9 @@
 // Das Archiv, Lesetisch.
-// Server-Adapter: Quelle rufen und auf eine Katalogkarte normalisieren.
+// Eine schlanke Grenze mit Cache-Aside (Redis mit Fallback auf In-Memory-Map).
 
 const PORT = Number(process.env.PORT ?? 3000);
+const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6380";
+const TTL = Number(process.env.CACHE_TTL ?? 60);
 
 // --- Met Museum API als Quelle ---
 
@@ -28,6 +30,87 @@ function toKarte(roh) {
   };
 }
 
+// --- Redis-Verbindung (mit Fallback auf In-Memory-Map) ---
+
+const map = new Map();
+let redis = null;
+
+async function verbindeRedis() {
+  try {
+    const { createClient } = await import("redis");
+    redis = createClient({ url: REDIS_URL });
+    redis.on("error", (e) => console.error("[cache] Redis-Fehler:", e.message));
+    // Zeitlimit: falls Redis nicht erreichbar, nicht hängen bleiben
+    await Promise.race([
+      redis.connect(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Verbindungstimeout")), 1500)
+      ),
+    ]);
+    console.log(`[cache] Redis @ ${REDIS_URL}`);
+  } catch (e) {
+    redis = null;
+    console.log(`[cache] map (Redis nicht erreichbar: ${e.message})`);
+  }
+}
+
+async function gedacht(key) {
+  if (redis) {
+    const roh = await redis.get(key);
+    return roh ? JSON.parse(roh) : null;
+  }
+  // Map-Fallback
+  const eintrag = map.get(key);
+  if (eintrag && eintrag.expires > Date.now()) return eintrag.data;
+  if (eintrag) map.delete(key);
+  return null;
+}
+
+async function merke(key, data) {
+  if (redis) {
+    await redis.set(key, JSON.stringify(data), { EX: TTL });
+  } else {
+    map.set(key, { data, expires: Date.now() + TTL * 1000 });
+  }
+}
+
+async function cacheTTL(key) {
+  if (redis) {
+    const t = await redis.ttl(key);
+    return t > 0 ? t : TTL;
+  }
+  const eintrag = map.get(key);
+  if (eintrag) {
+    const rest = Math.round((eintrag.expires - Date.now()) / 1000);
+    return rest > 0 ? rest : 0;
+  }
+  return 0;
+}
+
+// --- Cache-aside: karte(id) ---
+
+async function karte(id) {
+  const key = `archiv:objekt:${id}`;
+
+  // 1. Cache-Treffer?
+  const getroffen = await gedacht(key);
+  if (getroffen) {
+    const ttl = await cacheTTL(key);
+    return { source: "cache", ms: 0.1, ttl, data: getroffen };
+  }
+
+  // 2. Nein -> frisch holen
+  const t0 = performance.now();
+  const roh = await holeAusQuelle(id);
+  const data = toKarte(roh);
+  const ms = +(performance.now() - t0).toFixed(1);
+
+  // 3. Fürs nächste Mal merken
+  await merke(key, data);
+
+  return { source: "netz", ms, ttl: TTL, data };
+}
+
 // --- Hilfsfunktion ---
 
 const json = (obj, status = 200) =>
@@ -36,34 +119,41 @@ const json = (obj, status = 200) =>
     headers: { "content-type": "application/json" },
   });
 
-Bun.serve({
-  port: PORT,
-  async fetch(req) {
-    const { pathname } = new URL(req.url);
+// --- Server starten (Redis zuerst verbinden) ---
 
-    if (pathname === "/api/health") {
-      return json({ ok: true, dienst: "leseraum" });
-    }
+verbindeRedis().then(() => {
+  Bun.serve({
+    port: PORT,
+    async fetch(req) {
+      const { pathname } = new URL(req.url);
 
-    if (pathname === "/api/galerie") {
-      return json({ ids: GALERIE_IDS });
-    }
-
-    const m = pathname.match(/^\/api\/objekt\/(\d+)$/);
-    if (m) {
-      try {
-        const t0 = performance.now();
-        const roh = await holeAusQuelle(Number(m[1]));
-        const data = toKarte(roh);
-        const ms = +(performance.now() - t0).toFixed(1);
-        return json({ source: "netz", ms, data });
-      } catch (e) {
-        return json({ error: e.message }, 502);
+      // Health-Endpunkt mit Cache-Modus
+      if (pathname === "/api/health") {
+        return json({
+          ok: true,
+          dienst: "leseraum",
+          cache: redis ? "redis" : "map",
+          zeit: new Date().toISOString(),
+        });
       }
-    }
 
-    return json({ error: "not found", pfad: pathname }, 404);
-  },
+      // Galerie: kuratierte Liste
+      if (pathname === "/api/galerie") {
+        return json({ ids: GALERIE_IDS });
+      }
+
+      // Einzelobjekt: /api/objekt/:id
+      const m = pathname.match(/^\/api\/objekt\/(\d+)$/);
+      if (m) {
+        try {
+          return json(await karte(Number(m[1])));
+        } catch (e) {
+          return json({ error: e.message }, 502);
+        }
+      }
+
+      return json({ error: "not found", pfad: pathname }, 404);
+    },
+  });
+  console.log(`[archiv] Server auf http://localhost:${PORT}`);
 });
-
-console.log(`[archiv] Server auf http://localhost:${PORT}`);
