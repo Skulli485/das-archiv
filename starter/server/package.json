@@ -1,0 +1,11 @@
+{
+  "name": "archiv-server",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun index.js"
+  },
+  "dependencies": {
+    "redis": "^6.1.0"
+  }
+}

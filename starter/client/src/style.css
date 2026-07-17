@@ -1,0 +1,36 @@
+/* Das Archiv · Leseraum-Grundton. Warmes Papier, dunkle Tinte. Offline, ohne Netz-Fonts. */
+:root {
+  --papier: #f4efe6;
+  --papier-tief: #ece4d5;
+  --tinte: #1c140c;
+  --tinte-weich: #5b4a37;
+  --linie: #d9ccb4;
+  --messing: #b8863b; /* netz / Tresor */
+  --patina: #3f7d5e;  /* cache / Tisch */
+
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", "Segoe UI Mono", Consolas, monospace;
+
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--papier);
+  color: var(--tinte);
+  font: 16px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  padding: 0.12em 0.4em;
+  border-radius: 0.35em;
+  background: var(--papier-tief);
+  color: var(--tinte);
+}
