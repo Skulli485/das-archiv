@@ -18,7 +18,7 @@ async function holeAusQuelle(id) {
   return await res.json();
 }
 
-function toKarte(roh) {
+function toKarte(roh, id) {
   return {
     id: roh.objectID ?? id,
     titel: roh.title || "Ohne Titel",
@@ -104,7 +104,7 @@ async function karte(id, frisch = false) {
   // 2. Nein -> frisch holen
   const t0 = performance.now();
   const roh = await holeAusQuelle(id);
-  const data = toKarte(roh);
+  const data = toKarte(roh, id);
   const ms = +(performance.now() - t0).toFixed(1);
 
   // 3. Fürs nächste Mal merken
